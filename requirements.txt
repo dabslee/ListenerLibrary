@@ -1,0 +1,9 @@
+asgiref==3.10.0
+Django==5.2.7
+greenlet==3.2.3
+mutagen==1.47.0
+pillow==11.3.0
+playwright==1.54.0
+pyee==13.0.0
+sqlparse==0.5.3
+typing_extensions==4.14.1
