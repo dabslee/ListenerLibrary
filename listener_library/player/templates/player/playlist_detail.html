@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      {% if playlist.icon %}
+        <img src="{{ playlist.icon.url }}" alt="{{ playlist.name }}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;">
+      {% endif %}
+      <h2 class="d-inline-block ms-3">{{ playlist.name }}</h2>
+    </div>
+    <div>
+      <button class="btn btn-primary" onclick="playThePlaylist()">Play</button>
+      <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-secondary">Edit</a>
+      <a href="{% url 'delete_playlist' playlist.id %}" class="btn btn-danger">Delete</a>
+    </div>
+  </div>
+
+  <h3>Tracks</h3>
+  <ul class="list-group">
+    {% for track in playlist.tracks.all %}
+      <li class="list-group-item d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="playTrackFromPlaylist({{ forloop.counter0 }})">
+        <div>
+          {% if track.icon %}
+            <img src="{{ track.icon.url }}" alt="{{ track.name }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 5px;">
+          {% endif %}
+          <span class="ms-2">{{ track.name }}</span>
+        </div>
+      </li>
+    {% empty %}
+      <li class="list-group-item">This playlist is empty.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const playlistTracks = [
+        {% for track in playlist.tracks.all %}
+        {
+            id: {{ track.id }},
+            name: "{{ track.name|escapejs }}",
+            file: "{{ track.file.url }}",
+            icon: "{% if track.icon %}{{ track.icon.url }}{% endif %}",
+            type: "{{ track.type }}"
+        },
+        {% endfor %}
+    ];
+
+    function playThePlaylist() {
+        window.playPlaylist(playlistTracks);
+    }
+
+    function playTrackFromPlaylist(trackIndex) {
+        window.playPlaylist(playlistTracks, trackIndex);
+    }
+</script>
+{% endblock %}

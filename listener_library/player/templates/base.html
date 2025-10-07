@@ -1,0 +1,82 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ListenerLibrary</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="theme-{{ theme.theme_color }} {{ theme.theme_mode }}-theme {{ theme.theme_style }}">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">ListenerLibrary</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'register' %}">Register</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5 pb-5">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <footer class="fixed-bottom border-top player-container">
+        <div class="container p-3">
+            <div class="row align-items-center">
+                <div class="col-md-3">
+                    <div id="player-track-info" class="d-flex align-items-center">
+                        <img id="player-track-icon" src="" alt="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; display: none;">
+                        <span id="player-track-name" class="ms-2 fw-bold"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <audio id="audio-player" src=""></audio>
+                    <div class="d-flex justify-content-center align-items-center">
+                        <button id="prev-track" class="btn btn-outline-secondary btn-sm mx-1"><i class="fas fa-step-backward"></i></button>
+                        <button id="rewind" class="btn btn-outline-secondary btn-sm mx-1"><i class="fas fa-backward"></i></button>
+                        <button id="play-pause" class="btn btn-outline-primary btn-lg mx-1"><i class="fas fa-play"></i></button>
+                        <button id="fast-forward" class="btn btn-outline-secondary btn-sm mx-1"><i class="fas fa-forward"></i></button>
+                        <button id="next-track" class="btn btn-outline-secondary btn-sm mx-1"><i class="fas fa-step-forward"></i></button>
+                    </div>
+                    <div class="d-flex align-items-center mt-2">
+                        <span id="current-time" class="me-2 small">0:00</span>
+                        <input type="range" id="seek-bar" value="0" class="form-range">
+                        <span id="duration" class="ms-2 small">0:00</span>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex justify-content-end align-items-center">
+                     <button id="shuffle" class="btn btn-outline-secondary btn-sm me-2"><i class="fas fa-random"></i></button>
+                     <i class="fas fa-volume-down me-2"></i>
+                     <input type="range" id="volume-bar" value="100" class="form-range w-50">
+                     <i class="fas fa-volume-up ms-2"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/player.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Profile</h2>
+  <p>Welcome, {{ user.username }}!</p>
+
+  <hr>
+
+  <h3>Theme Settings</h3>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save Settings</button>
+  </form>
+{% endblock %}

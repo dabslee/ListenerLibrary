@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+{% load player_tags %}
+
+{% block content %}
+  <h2>Your Library</h2>
+  <a href="{% url 'upload_track' %}" class="btn btn-primary mb-3">Upload Track</a>
+  <a href="{% url 'create_playlist' %}" class="btn btn-primary mb-3">Create Playlist</a>
+
+  <div class="row">
+    <div class="col-md-6">
+      <h3>Tracks</h3>
+      <ul class="list-group">
+        {% for track in tracks %}
+          <li class="list-group-item d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="playTrack({{ track.id }})">
+            <div class="d-flex align-items-center">
+              <div class="position-relative">
+                {% if track.icon %}
+                  <img src="{{ track.icon.url }}" alt="{{ track.name }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+                {% else %}
+                  <div class="bg-secondary rounded" style="width: 50px; height: 50px;"></div>
+                {% endif %}
+                {% if track.type == 'podcast' and track.id in podcast_progress %}
+                  {% with progress_percentage=podcast_progress|get_item:track.id|mul:100|div:track.duration %}
+                  <div class="progress position-absolute bottom-0 start-0 w-100" style="height: 5px;">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ progress_percentage }}%;" aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                  {% endwith %}
+                {% endif %}
+              </div>
+              <span class="ms-2">{{ track.name }} ({{ track.get_type_display }})</span>
+            </div>
+            <a href="{% url 'delete_track' track.id %}" class="btn btn-danger btn-sm" onclick="event.stopPropagation();">Delete</a>
+          </li>
+        {% empty %}
+          <li class="list-group-item">No tracks yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="col-md-6">
+      <h3>Playlists</h3>
+      <ul class="list-group">
+        {% for playlist in playlists %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{% url 'playlist_detail' playlist.id %}" class="text-decoration-none text-dark d-flex align-items-center">
+              {% if playlist.icon %}
+                <img src="{{ playlist.icon.url }}" alt="{{ playlist.name }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+              {% else %}
+                 <div class="bg-secondary rounded" style="width: 50px; height: 50px;"></div>
+              {% endif %}
+              <span class="ms-2">{{ playlist.name }}</span>
+            </a>
+            <div>
+              <button class="btn btn-primary btn-sm" onclick="playPlaylist_{{ playlist.id }}()">Play</button>
+              <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'delete_playlist' playlist.id %}" class="btn btn-danger btn-sm">Delete</a>
+            </div>
+          </li>
+        {% empty %}
+          <li class="list-group-item">No playlists yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const tracks = {
+        {% for track in tracks %}
+        {{ track.id }}: {
+            id: {{ track.id }},
+            name: "{{ track.name|escapejs }}",
+            file: "{{ track.file.url }}",
+            icon: "{% if track.icon %}{{ track.icon.url }}{% endif %}",
+            type: "{{ track.type }}",
+            duration: {{ track.duration|default:0 }}
+        },
+        {% endfor %}
+    };
+
+    function playTrack(trackId, startTime = 0) {
+        const track = tracks[trackId];
+        let startPos = startTime;
+        {% if podcast_progress %}
+        if (track.type === 'podcast' && {{ podcast_progress|get_item:track.id|default:0 }} > 0) {
+            startPos = {{ podcast_progress|get_item:track.id }};
+        }
+        {% endif %}
+        window.playTrack(track, startPos);
+    }
+
+    {% for playlist in playlists %}
+    function playPlaylist_{{ playlist.id }}() {
+        const playlistTracks = [
+            {% for track in playlist.tracks.all %}
+            {
+                id: {{ track.id }},
+                name: "{{ track.name|escapejs }}",
+                file: "{{ track.file.url }}",
+                icon: "{% if track.icon %}{{ track.icon.url }}{% endif %}",
+                type: "{{ track.type }}",
+                duration: {{ track.duration|default:0 }}
+            },
+            {% endfor %}
+        ];
+        window.playPlaylist(playlistTracks);
+    }
+    {% endfor %}
+
+    document.addEventListener('DOMContentLoaded', () => {
+        {% if listening_history and listening_history.track %}
+        const lastTrack = tracks[{{ listening_history.track.id }}];
+        if (lastTrack) {
+            window.playTrack(lastTrack, {{ listening_history.position }});
+        }
+        {% endif %}
+    });
+</script>
+{% endblock %}
