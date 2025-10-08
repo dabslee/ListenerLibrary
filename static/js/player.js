@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const skipForwardBtn = document.getElementById('skip-forward-btn');
     const playbackSpeed = document.getElementById('playback-speed');
 
+    const tracksDataElement = document.getElementById('tracks-data');
+    const tracksMap = tracksDataElement ? JSON.parse(tracksDataElement.textContent) : {};
+
     let currentTrackId = null;
     let podcastProgress = {};
     let saveInterval;
@@ -51,31 +54,28 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 podcastProgress = data.podcast_progress || {};
-                if (data.current_track_id) {
-                    const trackElement = document.querySelector(`.track-item[data-track-id='${data.current_track_id}']`);
-                    if (trackElement) {
-                        const track = JSON.parse(trackElement.dataset.track);
-                        currentTrackId = track.id;
-                        audioPlayer.src = track.url;
-                        playerTrackName.textContent = track.name;
-                        if (track.icon) {
-                            playerIcon.src = track.icon;
-                            playerIcon.style.display = 'inline-block';
-                        } else {
-                            playerIcon.style.display = 'none';
-                        }
-
-                        // Restore time correctly, prioritizing specific podcast progress
-                        if (track.type === 'podcast' && typeof podcastProgress[track.id] === 'number') {
-                            audioPlayer.currentTime = podcastProgress[track.id];
-                        } else {
-                            audioPlayer.currentTime = data.current_time;
-                        }
-
-                        // Set up the save interval
-                        clearInterval(saveInterval);
-                        saveInterval = setInterval(savePlaybackState, 5000);
+                if (data.current_track_id && tracksMap[data.current_track_id]) {
+                    const track = tracksMap[data.current_track_id];
+                    currentTrackId = track.id;
+                    audioPlayer.src = track.file_url;
+                    playerTrackName.textContent = track.name;
+                    if (track.icon_url) {
+                        playerIcon.src = track.icon_url;
+                        playerIcon.style.display = 'inline-block';
+                    } else {
+                        playerIcon.style.display = 'none';
                     }
+
+                    // Restore time correctly, prioritizing specific podcast progress
+                    if (track.type === 'podcast' && typeof podcastProgress[track.id] === 'number') {
+                        audioPlayer.currentTime = podcastProgress[track.id];
+                    } else {
+                        audioPlayer.currentTime = data.current_time;
+                    }
+
+                    // Set up the save interval
+                    clearInterval(saveInterval);
+                    saveInterval = setInterval(savePlaybackState, 5000);
                 }
                 // Update progress bars for all visible podcast tracks
                 document.querySelectorAll('.progress-bar-indicator').forEach(bar => {
@@ -138,21 +138,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    window.playTrack = function(trackId, trackUrl, trackName, iconUrl, trackType) {
-        currentTrackId = trackId;
-        audioPlayer.src = trackUrl;
-        playerTrackName.textContent = trackName;
+    window.playTrack = function(trackId) {
+        const track = tracksMap[trackId];
+        if (!track) {
+            console.error(`Track with ID ${trackId} not found.`);
+            return;
+        }
 
-        if (iconUrl && iconUrl !== 'None' && iconUrl !== 'null') {
-            playerIcon.src = iconUrl;
+        currentTrackId = track.id;
+        audioPlayer.src = track.file_url;
+        playerTrackName.textContent = track.name;
+
+        if (track.icon_url) {
+            playerIcon.src = track.icon_url;
             playerIcon.style.display = 'inline-block';
         } else {
             playerIcon.style.display = 'none';
         }
 
         // Check for podcast-specific progress
-        if (trackType === 'podcast' && typeof podcastProgress[trackId] === 'number') {
-            audioPlayer.currentTime = podcastProgress[trackId];
+        if (track.type === 'podcast' && typeof podcastProgress[track.id] === 'number') {
+            audioPlayer.currentTime = podcastProgress[track.id];
         } else {
             audioPlayer.currentTime = 0; // Start from beginning for songs or podcasts with no progress
         }

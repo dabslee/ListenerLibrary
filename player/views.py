@@ -16,6 +16,7 @@ def track_list(request):
     podcast_progress_map = {progress.track_id: progress.progress for progress in podcast_progress_qs}
 
     tracks_data = []
+    tracks_map = {}
     for track in tracks:
         progress = podcast_progress_map.get(track.id, 0)
         progress_percentage = 0
@@ -34,9 +35,11 @@ def track_list(request):
             'progress_percentage': progress_percentage,
         }
         tracks_data.append(track_info)
+        tracks_map[track.id] = track_info
 
     context = {
         'tracks_data': tracks_data,
+        'tracks_map': tracks_map,
     }
     return render(request, 'player/track_list.html', context)
 
