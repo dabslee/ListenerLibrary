@@ -7,6 +7,7 @@ class Track(models.Model):
         ('podcast', 'Podcast'),
     )
     name = models.CharField(max_length=255)
+    artist = models.CharField(max_length=255, blank=True, null=True)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     file = models.FileField(upload_to='tracks/')
     icon = models.ImageField(upload_to='track_icons/', null=True, blank=True)
