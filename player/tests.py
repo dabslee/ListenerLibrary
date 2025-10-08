@@ -14,11 +14,13 @@ class PlayerTestCase(TestCase):
         self.client.login(username='testuser', password='testpassword')
 
         # Create a dummy uploaded file for the initial track
-        track_file = SimpleUploadedFile("test_track.mp3", b"dummy audio content", content_type="audio/mpeg")
+        self.track_content = b"dummy audio content"
+        track_file = SimpleUploadedFile("test_track.mp3", self.track_content, content_type="audio/mpeg")
 
         # Create a track object
         self.track = Track.objects.create(
             name='Test Track',
+            artist='Test Artist',
             type='song',
             file=track_file,
             owner=self.user
@@ -36,6 +38,7 @@ class PlayerTestCase(TestCase):
         response = self.client.get(reverse('track_list'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.track.name)
+        self.assertContains(response, self.track.artist)
 
     def test_upload_track_view(self):
         # Test GET request
@@ -47,13 +50,14 @@ class PlayerTestCase(TestCase):
         upload_file = SimpleUploadedFile("new_track.mp3", b"more dummy content", content_type="audio/mpeg")
         response = self.client.post(reverse('upload_track'), {
             'name': 'New Uploaded Track',
+            'artist': 'A New Artist',
             'type': 'podcast',
             'file': upload_file,
         })
 
         # Should redirect to track_list on success
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(Track.objects.filter(name='New Uploaded Track').exists())
+        self.assertTrue(Track.objects.filter(name='New Uploaded Track', artist='A New Artist').exists())
 
     def test_edit_track_view(self):
         # Test GET request
@@ -62,10 +66,12 @@ class PlayerTestCase(TestCase):
         self.assertContains(response, 'Edit Track')
         self.assertContains(response, self.track.name)
 
-        # Test POST request to update the name
+        # Test POST request to update the name and artist
         new_name = "Updated Test Track"
+        new_artist = "Updated Artist"
         response = self.client.post(reverse('edit_track', args=[self.track.id]), {
             'name': new_name,
+            'artist': new_artist,
             'type': self.track.type,
             # Intentionally not passing a file to ensure the existing one is kept
         })
@@ -75,6 +81,7 @@ class PlayerTestCase(TestCase):
         # Check if the track was updated
         updated_track = Track.objects.get(id=self.track.id)
         self.assertEqual(updated_track.name, new_name)
+        self.assertEqual(updated_track.artist, new_artist)
 
     def test_delete_track_view(self):
         # Test GET request
@@ -87,3 +94,10 @@ class PlayerTestCase(TestCase):
         response = self.client.post(reverse('delete_track', args=[self.track.id]))
         self.assertEqual(response.status_code, 302) # Redirects to track_list
         self.assertFalse(Track.objects.filter(id=self.track.id).exists())
+
+    def test_download_track_view(self):
+        response = self.client.get(reverse('download_track', args=[self.track.id]))
+        self.assertEqual(response.status_code, 200)
+        expected_filename = os.path.basename(self.track.file.name)
+        self.assertEqual(response.get('Content-Disposition'), f'attachment; filename="{expected_filename}"')
+        self.assertEqual(b"".join(response.streaming_content), self.track_content)

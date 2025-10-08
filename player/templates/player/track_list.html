@@ -21,10 +21,14 @@
 
                     <div>
                         <h5 class="mb-1">{{ track.name }}</h5>
+                        {% if track.artist %}
+                            <p class="mb-1"><small class="text-muted">By {{ track.artist }}</small></p>
+                        {% endif %}
                         <small class="text-muted">{{ track.get_type_display }}</small>
                     </div>
                 </div>
                 <div>
+                    <a href="{% url 'download_track' track.id %}" class="btn btn-outline-success btn-sm me-2">Download</a>
                     <a href="{% url 'edit_track' track.id %}" class="btn btn-outline-primary btn-sm me-2">Edit</a>
                     <a href="{% url 'delete_track' track.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
                 </div>
