@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
+from django.http import FileResponse
 from .forms import TrackForm
 from .models import Track
 
@@ -57,3 +58,8 @@ def edit_track(request, track_id):
     else:
         form = TrackForm(instance=track)
     return render(request, 'player/edit_track.html', {'form': form, 'track': track})
+
+@login_required
+def download_track(request, track_id):
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    return FileResponse(track.file, as_attachment=True, filename=track.file.name)
