@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const durationEl = document.getElementById('duration');
     const playerIcon = document.getElementById('player-icon');
     const playerTrackName = document.getElementById('player-track-name');
+    const skipBackBtn = document.getElementById('skip-back-btn');
+    const skipForwardBtn = document.getElementById('skip-forward-btn');
+    const playbackSpeed = document.getElementById('playback-speed');
 
     // Function to format time from seconds to MM:SS
     function formatTime(seconds) {
@@ -71,4 +74,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         audioPlayer.play();
     }
+
+    // Skip back 15 seconds
+    skipBackBtn.addEventListener('click', () => {
+        if (audioPlayer.src && audioPlayer.readyState > 0) {
+            audioPlayer.currentTime = Math.max(0, audioPlayer.currentTime - 15);
+        }
+    });
+
+    // Skip forward 15 seconds
+    skipForwardBtn.addEventListener('click', () => {
+        if (audioPlayer.src && audioPlayer.readyState > 0) {
+            audioPlayer.currentTime = Math.min(audioPlayer.duration, audioPlayer.currentTime + 15);
+        }
+    });
+
+    // Change playback speed
+    playbackSpeed.addEventListener('change', () => {
+        if (audioPlayer.src && audioPlayer.readyState > 0) {
+            audioPlayer.playbackRate = parseFloat(playbackSpeed.value);
+        }
+    });
 });

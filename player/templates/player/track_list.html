@@ -24,7 +24,10 @@
                         <small class="text-muted">{{ track.get_type_display }}</small>
                     </div>
                 </div>
-                <a href="{% url 'delete_track' track.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                <div>
+                    <a href="{% url 'edit_track' track.id %}" class="btn btn-outline-primary btn-sm me-2">Edit</a>
+                    <a href="{% url 'delete_track' track.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                </div>
             </div>
         {% empty %}
             <div class="alert alert-info mt-4">

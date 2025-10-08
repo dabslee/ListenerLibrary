@@ -45,3 +45,15 @@ def delete_track(request, track_id):
         track.delete()
         return redirect('track_list')
     return render(request, 'player/delete_track.html', {'track': track})
+
+@login_required
+def edit_track(request, track_id):
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    if request.method == 'POST':
+        form = TrackForm(request.POST, request.FILES, instance=track)
+        if form.is_valid():
+            form.save()
+            return redirect('track_list')
+    else:
+        form = TrackForm(instance=track)
+    return render(request, 'player/edit_track.html', {'form': form, 'track': track})

@@ -29,3 +29,21 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('{{ form.file.id_for_label }}');
+        const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const fileName = this.files[0].name;
+                // Remove the extension from the file name
+                const nameWithoutExtension = fileName.split('.').slice(0, -1).join('.');
+                nameInput.value = nameWithoutExtension;
+            }
+        });
+    });
+</script>
+{% endblock %}
