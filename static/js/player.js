@@ -65,8 +65,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             playerIcon.style.display = 'none';
                         }
 
-                        // Restore time but don't play yet
-                        audioPlayer.currentTime = data.current_time;
+                        // Restore time correctly, prioritizing specific podcast progress
+                        if (track.type === 'podcast' && typeof podcastProgress[track.id] === 'number') {
+                            audioPlayer.currentTime = podcastProgress[track.id];
+                        } else {
+                            audioPlayer.currentTime = data.current_time;
+                        }
 
                         // Set up the save interval
                         clearInterval(saveInterval);
@@ -77,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('.progress-bar-indicator').forEach(bar => {
                     const trackId = bar.dataset.trackId;
                     const duration = parseFloat(bar.dataset.duration);
-                    if (podcastProgress[trackId] && duration > 0) {
+                    if (typeof podcastProgress[trackId] === 'number' && duration > 0) {
                         const width = (podcastProgress[trackId] / duration) * 100;
                         bar.style.width = `${width}%`;
                     }
@@ -147,10 +151,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Check for podcast-specific progress
-        if (trackType === 'podcast' && podcastProgress[trackId]) {
+        if (trackType === 'podcast' && typeof podcastProgress[trackId] === 'number') {
             audioPlayer.currentTime = podcastProgress[trackId];
         } else {
-            audioPlayer.currentTime = 0; // Start from beginning for songs
+            audioPlayer.currentTime = 0; // Start from beginning for songs or podcasts with no progress
         }
 
         audioPlayer.play();

@@ -1,9 +1,12 @@
+import logging
 from django import forms
 from .models import Track
 from mutagen.mp3 import MP3
 from mutagen.wave import WAVE
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
+
+logger = logging.getLogger(__name__)
 
 class TrackForm(forms.ModelForm):
     class Meta:
@@ -30,6 +33,8 @@ class TrackForm(forms.ModelForm):
         file = cleaned_data.get("file")
         if file:
             try:
+                # It's important to rewind the file-like object before passing it to mutagen
+                file.seek(0)
                 audio = None
                 if file.name.endswith('.mp3'):
                     audio = MP3(file)
@@ -42,12 +47,14 @@ class TrackForm(forms.ModelForm):
 
                 if audio:
                     cleaned_data['duration'] = audio.info.length
+                    logger.info(f"Successfully extracted duration for {file.name}: {audio.info.length}")
                 else:
-                    # If the file type is not supported, we can either raise a validation error
-                    # or just not set the duration. For now, we'll just not set it.
+                    logger.warning(f"Unsupported audio format for {file.name}")
                     pass
             except Exception as e:
-                # Handle cases where mutagen can't read the file.
-                # Don't block upload, just skip setting duration.
+                logger.error(f"Could not read audio duration for {file.name}. Error: {e}", exc_info=True)
                 pass
+            finally:
+                # Rewind the file again so Django can save it correctly
+                file.seek(0)
         return cleaned_data

@@ -9,7 +9,7 @@
 
     <div class="list-group">
         {% for track in tracks_data %}
-            {% with track_json='{"id": "'|add:track.id|add:'", "name": "'|add:track.name|escapejs|add:'", "url": "'|add:track.file_url|add:'", "icon": "'|add:track.icon_url|add:'"}' %}
+            {% with track_json='{"id": "'|add:track.id|add:'", "name": "'|add:track.name|escapejs|add:'", "url": "'|add:track.file_url|add:'", "icon": "'|add:track.icon_url|add:'", "type": "'|add:track.type|add:'"}' %}
             <div class="list-group-item list-group-item-action track-item" data-track-id="{{ track.id }}" data-track="{{ track_json }}">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center flex-grow-1" style="cursor: pointer;" onclick="playTrack('{{ track.id }}', '{{ track.file_url }}', '{{ track.name|escapejs }}', '{% if track.icon_url %}{{ track.icon_url }}{% endif %}', '{{ track.type }}');">
