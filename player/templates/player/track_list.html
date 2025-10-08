@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Your Tracks</h2>
+        <a href="{% url 'upload_track' %}" class="btn btn-primary">Upload New Track</a>
+    </div>
+
+    <div class="list-group">
+        {% for track in tracks %}
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center" style="cursor: pointer;" onclick="playTrack('{{ track.file.url }}', '{{ track.name|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}');">
+                    {% if track.icon %}
+                        <img src="{{ track.icon.url }}" alt="{{ track.name }}" style="width: 50px; height: 50px; border-radius: 5px; object-fit: cover;" class="me-3">
+                    {% else %}
+                        <div class="bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; border-radius: 5px;">
+                            <i class="fas fa-music text-white"></i>
+                        </div>
+                    {% endif %}
+
+                    <div>
+                        <h5 class="mb-1">{{ track.name }}</h5>
+                        <small class="text-muted">{{ track.get_type_display }}</small>
+                    </div>
+                </div>
+                <a href="{% url 'delete_track' track.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+            </div>
+        {% empty %}
+            <div class="alert alert-info mt-4">
+                You haven't uploaded any tracks yet. <a href="{% url 'upload_track' %}" class="alert-link">Upload your first track to get started!</a>
+            </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}

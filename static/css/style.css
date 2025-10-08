@@ -1,0 +1,5 @@
+/* Main stylesheet for ListenerLibrary */
+
+body {
+    padding-bottom: 80px; /* Add padding to the bottom to avoid content being hidden by the fixed footer */
+}

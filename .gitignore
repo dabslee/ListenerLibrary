@@ -6,7 +6,7 @@ __pycache__/
 local_settings.py
 db.sqlite3
 media/
-static/
+staticfiles/
 
 # Env
 .env
@@ -17,5 +17,11 @@ ENV/
 env.bak
 venv.bak
 
-# Playwright
-jules-scratch/
+# IDE / Editor
+.idea/
+.vscode/
+
+# Python
+*.egg-info/
+dist/
+build/
