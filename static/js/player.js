@@ -185,13 +185,10 @@ document.addEventListener('DOMContentLoaded', function() {
         audioPlayer.src = track.stream_url;
         audioPlayer.load();
 
-        audioPlayer.addEventListener('loadedmetadata', () => {
+        audioPlayer.addEventListener('canplay', () => {
             if (isFinite(audioPlayer.duration)) {
                 audioPlayer.currentTime = startPosition;
             }
-        }, { once: true });
-
-        audioPlayer.addEventListener('canplay', () => {
             audioPlayer.play().catch(e => console.error("Playback error:", e));
         }, { once: true });
     }
@@ -307,9 +304,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    audioPlayer.addEventListener('loadedmetadata', () => {
-        durationEl.textContent = formatTime(audioPlayer.duration);
-    });
 
     seekBar.addEventListener('input', () => {
         if (audioPlayer.duration) {
@@ -384,13 +378,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? currentTrack.position
                 : 0;
 
-            audioPlayer.addEventListener('loadedmetadata', () => {
+            audioPlayer.addEventListener('canplay', () => {
                 if (isFinite(audioPlayer.duration)) {
                     audioPlayer.currentTime = startPosition;
                     currentTimeEl.textContent = formatTime(startPosition);
                     durationEl.textContent = formatTime(audioPlayer.duration);
                     seekBar.value = (audioPlayer.duration > 0) ? (startPosition / audioPlayer.duration) * 100 : 0;
                 }
+                audioPlayer.play().catch(e => console.error("Playback error:", e));
             }, { once: true });
             audioPlayer.load();
 
