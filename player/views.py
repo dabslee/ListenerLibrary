@@ -353,6 +353,11 @@ def update_playback_state(request):
 def playlist_tracks_api(request, playlist_id):
     playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
     items = playlist.playlistitem_set.select_related('track').order_by('order')
+    track_ids = [item.track.id for item in items]
+
+    podcast_progress = PodcastProgress.objects.filter(user=request.user, track_id__in=track_ids)
+    podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
+
     tracks_data = []
     for item in items:
         track = item.track
@@ -360,9 +365,10 @@ def playlist_tracks_api(request, playlist_id):
             'id': track.id,
             'name': track.name,
             'artist': track.artist,
-            'url': request.build_absolute_uri(track.file.url),
-            'icon': request.build_absolute_uri(track.icon.url) if track.icon else None,
+            'stream_url': request.build_absolute_uri(track.file.url),
+            'icon_url': request.build_absolute_uri(track.icon.url) if track.icon else None,
             'type': track.type,
+            'position': podcast_progress_map.get(track.id, 0)
         })
     return JsonResponse(tracks_data, safe=False)
 
