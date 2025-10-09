@@ -9,8 +9,11 @@
 
     <div class="list-group">
         {% for track in tracks %}
-            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center" style="cursor: pointer;" onclick="playTrack('{% url 'stream_track' track.id %}', '{{ track.name|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}');">
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                 style="cursor: pointer;"
+                 onclick="playTrack('{% url 'stream_track' track.id %}', '{{ track.name|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}', {{ track.id }}, '{{ track.type }}');"
+                 data-testid="track-item-{{ track.id }}">
+                <div class="d-flex align-items-center">
                     {% if track.icon %}
                         <img src="{{ track.icon.url }}" alt="{{ track.name }}" style="width: 50px; height: 50px; border-radius: 5px; object-fit: cover;" class="me-3">
                     {% else %}
@@ -25,6 +28,11 @@
                             <p class="mb-1"><small class="text-muted">By {{ track.artist }}</small></p>
                         {% endif %}
                         <small class="text-muted">{{ track.get_type_display }}</small>
+                        {% if track.type == 'podcast' and track.progress_percentage > 0 %}
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ track.progress_percentage }}%;" aria-valuenow="{{ track.progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div>
@@ -39,5 +47,19 @@
             </div>
         {% endfor %}
     </div>
+
+    {{ podcast_positions_json|json_script:"podcast-positions-data" }}
+
+    <script id="playback-state-data" type="application/json">
+    {% if playback_state and playback_state.track %}
+    {
+        "trackId": {{ playback_state.track.id }},
+        "trackName": "{{ playback_state.track.name|escapejs }}",
+        "trackIcon": "{% if playback_state.track.icon %}{{ playback_state.track.icon.url }}{% else %}{% endif %}",
+        "trackStreamUrl": "{% url 'stream_track' playback_state.track.id %}",
+        "position": {{ playback_state.last_played_position }}
+    }
+    {% endif %}
+    </script>
 
 {% endblock %}

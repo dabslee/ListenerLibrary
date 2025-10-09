@@ -5,14 +5,51 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
-from django.http import FileResponse, StreamingHttpResponse
+from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from .forms import TrackForm
-from .models import Track
+from .models import Track, UserPlaybackState, PodcastProgress
+from mutagen import File as MutagenFile
+
+import json
 
 @login_required
 def track_list(request):
-    tracks = Track.objects.filter(owner=request.user)
-    return render(request, 'player/track_list.html', {'tracks': tracks})
+    # Eagerly load tracks into a list to modify them
+    tracks = list(Track.objects.filter(owner=request.user))
+
+    # Get last playback state, pre-fetching the related track object
+    try:
+        playback_state = UserPlaybackState.objects.select_related('track').get(user=request.user)
+    except UserPlaybackState.DoesNotExist:
+        playback_state = None
+
+    # Get all podcast progress for the user at once
+    podcast_progress_list = PodcastProgress.objects.filter(user=request.user)
+    podcast_progress_map = {p.track_id: p for p in podcast_progress_list}
+
+    # Attach progress data directly to each track object for easier template rendering
+    for track in tracks:
+        if track.type == 'podcast' and track.id in podcast_progress_map:
+            progress = podcast_progress_map[track.id]
+            # Calculate percentage, avoiding division by zero
+            if track.duration and track.duration > 0:
+                track.progress_percentage = (progress.position / track.duration) * 100
+            else:
+                track.progress_percentage = 0
+        else:
+            # Ensure the attribute exists on all tracks
+            track.progress_percentage = 0
+
+    # Create a simple map of track_id -> position for JavaScript logic
+    podcast_positions_map = {p.track_id: p.position for p in podcast_progress_list}
+
+    context = {
+        'tracks': tracks,
+        'playback_state': playback_state,
+        # This will be used by JavaScript to set the start time for podcasts
+        'podcast_positions_json': json.dumps(podcast_positions_map),
+    }
+    return render(request, 'player/track_list.html', context)
 
 @login_required
 def profile(request):
@@ -36,6 +73,21 @@ def upload_track(request):
         if form.is_valid():
             track = form.save(commit=False)
             track.owner = request.user
+
+            # Calculate and save track duration
+            audio_file = request.FILES['file']
+            try:
+                audio = MutagenFile(audio_file)
+                if audio:
+                    track.duration = audio.info.length
+            except Exception as e:
+                # Handle cases where mutagen can't read the file
+                # For now, we'll just leave duration as 0
+                print(f"Error reading audio file metadata: {e}")
+            finally:
+                # Reset file pointer for Django's saving mechanism
+                audio_file.seek(0)
+
             track.save()
             return redirect('track_list')
     else:
@@ -56,7 +108,22 @@ def edit_track(request, track_id):
     if request.method == 'POST':
         form = TrackForm(request.POST, request.FILES, instance=track)
         if form.is_valid():
-            form.save()
+            edited_track = form.save(commit=False)
+
+            # If a new file is uploaded, calculate its duration
+            if 'file' in request.FILES:
+                audio_file = request.FILES['file']
+                try:
+                    audio = MutagenFile(audio_file)
+                    if audio:
+                        edited_track.duration = audio.info.length
+                except Exception as e:
+                    print(f"Error reading audio file metadata: {e}")
+                finally:
+                    audio_file.seek(0)
+
+            edited_track.save()
+            form.save_m2m() # To save many-to-many fields if any
             return redirect('track_list')
     else:
         form = TrackForm(instance=track)
@@ -93,6 +160,45 @@ class RangeFileWrapper:
                 raise StopIteration()
             self.remaining -= len(data)
             return data
+
+import json
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+@require_POST
+@login_required
+def update_playback_state(request):
+    try:
+        data = json.loads(request.body)
+        track_id = data.get('track_id')
+        position = data.get('position')
+
+        if track_id is None or position is None:
+            return JsonResponse({'status': 'error', 'message': 'Missing track_id or position'}, status=400)
+
+        track = get_object_or_404(Track, pk=track_id, owner=request.user)
+
+        # Update general playback state
+        UserPlaybackState.objects.update_or_create(
+            user=request.user,
+            defaults={'track': track, 'last_played_position': position}
+        )
+
+        # Update podcast-specific progress
+        if track.type == 'podcast':
+            PodcastProgress.objects.update_or_create(
+                user=request.user,
+                track=track,
+                defaults={'position': position}
+            )
+
+        return JsonResponse({'status': 'success'})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
 
 @login_required
 def stream_track(request, track_id):

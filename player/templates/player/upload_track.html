@@ -30,24 +30,3 @@
     </div>
 </div>
 {% endblock %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Use the correct ID for the file input. Django's default is `id_file`.
-        const fileInput = document.getElementById('id_file');
-        const nameInput = document.getElementById('id_name');
-
-        if (fileInput && nameInput) {
-            fileInput.addEventListener('change', function() {
-                if (this.files.length > 0) {
-                    const fileName = this.files[0].name;
-                    // Remove the extension from the file name
-                    const nameWithoutExtension = fileName.split('.').slice(0, -1).join('.');
-                    nameInput.value = nameWithoutExtension;
-                }
-            });
-        }
-    });
-</script>
-{% endblock %}

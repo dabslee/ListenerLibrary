@@ -10,4 +10,5 @@ urlpatterns = [
     path('track/<int:track_id>/edit/', views.edit_track, name='edit_track'),
     path('track/<int:track_id>/download/', views.download_track, name='download_track'),
     path('track/<int:track_id>/stream/', views.stream_track, name='stream_track'),
+    path('api/update_playback_state/', views.update_playback_state, name='update_playback_state'),
 ]
