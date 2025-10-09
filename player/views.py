@@ -6,32 +6,83 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
-from .forms import TrackForm
-from .models import Track, UserPlaybackState, PodcastProgress
+from django.views.decorators.http import require_POST
+from django.db.models import Q, Subquery, OuterRef, F
+from .forms import TrackForm, PlaylistForm
+from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed
 from mutagen import File as MutagenFile
+from django.utils import timezone
 
 import json
 
 @login_required
 def track_list(request):
-    tracks = list(Track.objects.filter(owner=request.user))
+    tracks_query = Track.objects.filter(owner=request.user)
+    playlists = Playlist.objects.filter(owner=request.user)
+    artists = Track.objects.filter(owner=request.user).values_list('artist', flat=True).distinct().order_by('artist')
 
-    # The context processor now handles fetching playback_state and podcast_positions_json.
-    # We still need to calculate the progress percentage for the initial render of the progress bars.
-    podcast_progress = PodcastProgress.objects.filter(user=request.user)
+    # --- Filtering ---
+    playlist_filter_id = request.GET.get('playlist')
+    artist_filter = request.GET.get('artist')
+    search_query = request.GET.get('search')
+
+    if playlist_filter_id:
+        try:
+            playlist = Playlist.objects.get(id=playlist_filter_id, owner=request.user)
+            tracks_query = playlist.tracks.all()
+        except Playlist.DoesNotExist:
+            tracks_query = Track.objects.none()
+
+    if artist_filter:
+        tracks_query = tracks_query.filter(artist=artist_filter)
+
+    if search_query:
+        tracks_query = tracks_query.filter(
+            Q(name__icontains=search_query) | Q(artist__icontains=search_query)
+        )
+
+    # --- Sorting ---
+    sort_option = request.GET.get('sort', 'name')
+
+    if sort_option == 'last_played':
+        last_played_subquery = UserTrackLastPlayed.objects.filter(
+            user=request.user,
+            track=OuterRef('pk')
+        ).values('last_played')[:1]
+        tracks_query = tracks_query.annotate(
+            last_played_timestamp=Subquery(last_played_subquery)
+        ).order_by(F('last_played_timestamp').desc(nulls_last=True))
+    else:
+        tracks_query = tracks_query.order_by('name')
+
+    tracks = list(tracks_query)
+
+    # --- Post-processing for progress bars ---
+    podcast_progress = PodcastProgress.objects.filter(user=request.user, track__in=[t.id for t in tracks])
     podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
 
     for track in tracks:
-        if track.type == 'podcast' and track.id in podcast_progress_map:
-            position = podcast_progress_map[track.id]
+        if track.type == 'podcast':
+            position = podcast_progress_map.get(track.id, 0)
+            track.position = position
             if track.duration and track.duration > 0:
                 track.progress_percentage = (position / track.duration) * 100
             else:
                 track.progress_percentage = 0
         else:
+            track.position = 0
             track.progress_percentage = 0
 
-    return render(request, 'player/track_list.html', {'tracks': tracks})
+    context = {
+        'tracks': tracks,
+        'playlists': playlists,
+        'artists': artists,
+        'selected_playlist_id': int(playlist_filter_id) if playlist_filter_id else None,
+        'selected_artist': artist_filter,
+        'search_query': search_query,
+        'sort_option': sort_option,
+    }
+    return render(request, 'player/track_list.html', context)
 
 @login_required
 def profile(request):
@@ -116,6 +167,92 @@ def download_track(request, track_id):
     track = get_object_or_404(Track, pk=track_id, owner=request.user)
     return FileResponse(track.file, as_attachment=True, filename=track.file.name)
 
+
+@login_required
+def playlist_list(request):
+    playlists = Playlist.objects.filter(owner=request.user)
+    return render(request, 'player/playlist_list.html', {'playlists': playlists})
+
+@login_required
+def create_playlist(request):
+    if request.method == 'POST':
+        form = PlaylistForm(request.POST, request.FILES)
+        if form.is_valid():
+            playlist = form.save(commit=False)
+            playlist.owner = request.user
+            playlist.save()
+            return redirect('playlist_list')
+    else:
+        form = PlaylistForm()
+    return render(request, 'player/create_playlist.html', {'form': form})
+
+@login_required
+def playlist_detail(request, playlist_id):
+    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    playlist_items = playlist.playlistitem_set.all()
+    return render(request, 'player/playlist_detail.html', {'playlist': playlist, 'playlist_items': playlist_items})
+
+@login_required
+def edit_playlist(request, playlist_id):
+    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    if request.method == 'POST':
+        form = PlaylistForm(request.POST, request.FILES, instance=playlist)
+        if form.is_valid():
+            form.save()
+            return redirect('playlist_list')
+    else:
+        form = PlaylistForm(instance=playlist)
+    return render(request, 'player/edit_playlist.html', {'form': form, 'playlist': playlist})
+
+@login_required
+def delete_playlist(request, playlist_id):
+    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    if request.method == 'POST':
+        playlist.delete()
+        return redirect('playlist_list')
+    return render(request, 'player/delete_playlist.html', {'playlist': playlist})
+
+@login_required
+@require_POST
+def reorder_playlist(request, playlist_id):
+    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    track_ids = request.POST.getlist('track_ids[]')
+    for index, track_id in enumerate(track_ids):
+        PlaylistItem.objects.filter(playlist=playlist, track_id=track_id).update(order=index)
+    return JsonResponse({'status': 'success'})
+
+@login_required
+@require_POST
+def add_track_to_playlist(request):
+    track_id = request.POST.get('track_id')
+    playlist_id = request.POST.get('playlist_id')
+
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+
+    # Check if the item already exists
+    if PlaylistItem.objects.filter(playlist=playlist, track=track).exists():
+        return JsonResponse({'status': 'warning', 'message': 'Track already in playlist.'})
+
+    # Get the highest order value and add 1
+    max_order = playlist.playlistitem_set.aggregate(models.Max('order'))['order__max'] or 0
+
+    PlaylistItem.objects.create(playlist=playlist, track=track, order=max_order + 1)
+
+    return JsonResponse({'status': 'success', 'message': f'Added {track.name} to {playlist.name}.'})
+
+@login_required
+@require_POST
+def remove_track_from_playlist(request, playlist_id, track_id):
+    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+
+    item = get_object_or_404(PlaylistItem, playlist=playlist, track=track)
+    item.delete()
+
+    return JsonResponse({'status': 'success', 'message': 'Track removed from playlist.'})
+
+
 range_re = re.compile(r'bytes\s*=\s*(\d+)\s*-\s*(\d*)', re.I)
 
 class RangeFileWrapper:
@@ -165,6 +302,13 @@ def update_playback_state(request):
         UserPlaybackState.objects.update_or_create(
             user=request.user,
             defaults={'track': track, 'last_played_position': position}
+        )
+
+        # Update last played timestamp
+        UserTrackLastPlayed.objects.update_or_create(
+            user=request.user,
+            track=track,
+            defaults={'last_played': timezone.now()}
         )
 
         # Update podcast-specific progress

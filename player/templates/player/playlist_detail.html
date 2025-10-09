@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>{{ playlist.name }}</h2>
+            <a href="{% url 'playlist_list' %}" class="btn btn-secondary btn-sm">Back to Playlists</a>
+        </div>
+        <div>
+            <button id="play-all-btn" class="btn btn-success">Play All</button>
+            <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary">Edit Playlist</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            {% if playlist.image %}
+                <img src="{{ playlist.image.url }}" alt="{{ playlist.name }}" class="img-fluid rounded mb-3">
+            {% else %}
+                <div class="bg-secondary d-flex align-items-center justify-content-center rounded mb-3" style="width: 100%; height: 300px;">
+                    <i class="fas fa-music fa-3x text-white"></i>
+                </div>
+            {% endif %}
+        </div>
+        <div class="col-md-8">
+            <h3>Tracks</h3>
+            <ul id="playlist-tracks" class="list-group">
+                {% for item in playlist_items %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center"
+                        data-track-id="{{ item.track.id }}"
+                        id="playlist-item-{{ item.track.id }}">
+                        <div class="flex-grow-1 d-flex align-items-center" style="cursor: pointer;" onclick="window.playPlaylist(playlistData, {{ forloop.counter0 }})">
+                            <i class="fas fa-grip-vertical me-3" style="cursor: move;"></i>
+                            {% if item.track.icon %}
+                                <img src="{{ item.track.icon.url }}" alt="{{ item.track.name }}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;" class="me-3">
+                            {% else %}
+                                <div class="bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 4px;">
+                                    <i class="fas fa-music text-white"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <h6 class="mb-0">{{ item.track.name }}</h6>
+                                {% if item.track.artist %}
+                                    <small class="text-muted">By {{ item.track.artist }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item">This playlist is empty.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let playlistData = [
+    {% for item in playlist_items %}
+    {
+        id: {{ item.track.id }},
+        name: "{{ item.track.name|escapejs }}",
+        stream_url: "{% url 'stream_track' item.track.id %}",
+        icon_url: {% if item.track.icon %}"{{ item.track.icon.url }}"{% else %}null{% endif %},
+        type: "{{ item.track.type }}"
+    },
+    {% endfor %}
+];
+
+function removeFromPlaylist(playlistId, trackId) {
+    if (!confirm('Are you sure you want to remove this track from the playlist?')) {
+        return;
+    }
+
+    const url = `/playlists/remove_track/${playlistId}/${trackId}/`;
+    const csrfToken = '{{ csrf_token }}';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Remove the item from the DOM
+            const itemToRemove = document.getElementById(`playlist-item-${trackId}`);
+            if (itemToRemove) {
+                itemToRemove.remove();
+            }
+            // Update the playlistData array to reflect the change
+            playlistData = playlistData.filter(track => track.id !== trackId);
+            alert(data.message);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while removing the track.');
+    });
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const playAllBtn = document.getElementById('play-all-btn');
+    if (playAllBtn) {
+        playAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (playlistData.length > 0) {
+                window.playPlaylist(playlistData, 0);
+            } else {
+                alert("This playlist is empty!");
+            }
+        });
+    }
+
+    const playlistTracks = document.getElementById('playlist-tracks');
+    if (playlistTracks) {
+        new Sortable(playlistTracks, {
+            animation: 150,
+            handle: '.fa-grip-vertical',
+            onEnd: function (evt) {
+                const trackIds = Array.from(evt.target.children).map(li => li.dataset.trackId);
+                const reorderUrl = "{% url 'reorder_playlist' playlist.id %}";
+
+                const formData = new FormData();
+                trackIds.forEach(id => formData.append('track_ids[]', id));
+
+                fetch(reorderUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        console.error('Failed to reorder playlist');
+                    } else {
+                        // Re-sync the playlistData array with the new order
+                        const reorderedPlaylistData = [];
+                        trackIds.forEach(id => {
+                            const track = playlistData.find(t => t.id == id);
+                            if(track) reorderedPlaylistData.push(track);
+                        });
+                        playlistData = reorderedPlaylistData;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

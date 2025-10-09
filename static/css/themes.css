@@ -1,0 +1,95 @@
+/* Light Theme (Default) */
+body {
+    background-color: #f8f9fa;
+    color: #212529;
+}
+
+/* --- Dark Theme --- */
+html[data-theme="dark"] body {
+    background-color: #212529;
+    color: #f8f9fa;
+}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .list-group-item,
+html[data-theme="dark"] footer.fixed-bottom,
+html[data-theme="dark"] .alert-info {
+    background-color: #343a40 !important;
+    border-color: #495057 !important;
+    color: #f8f9fa;
+}
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select {
+    background-color: #343a40;
+    color: #f8f9fa;
+    border-color: #495057;
+}
+html[data-theme="dark"] .text-muted {
+    color: #f8f9fa !important;
+    opacity: 0.7;
+}
+html[data-theme="dark"] .navbar {
+    background-color: #343a40 !important;
+}
+
+/* --- Light Blue Theme --- */
+html[data-theme="light-blue"] body {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+}
+html[data-theme="light-blue"] .card,
+html[data-theme="light-blue"] .list-group-item,
+html[data-theme="light-blue"] footer.fixed-bottom,
+html[data-theme="light-blue"] .alert-info {
+    background-color: #bbdefb !important;
+    border-color: #90caf9 !important;
+    color: #0d47a1;
+}
+html[data-theme="light-blue"] .form-control,
+html[data-theme="light-blue"] .form-select {
+    background-color: #bbdefb;
+    color: #0d47a1;
+    border-color: #90caf9;
+}
+html[data-theme="light-blue"] .navbar {
+    background-color: #0d47a1 !important;
+}
+html[data-theme="light-blue"] .btn-primary {
+    background-color: #1976d2;
+    border-color: #1976d2;
+}
+
+/* --- Dark Blue Theme --- */
+html[data-theme="dark-blue"] body {
+    background-color: #0d1b2a;
+    color: #e0e1dd;
+}
+html[data-theme="dark-blue"] .card,
+html[data-theme="dark-blue"] .list-group-item,
+html[data-theme="dark-blue"] footer.fixed-bottom,
+html[data-theme="dark-blue"] .alert-info {
+    background-color: #1b263b !important;
+    border-color: #415a77 !important;
+    color: #e0e1dd;
+}
+html[data-theme="dark-blue"] .form-control,
+html[data-theme="dark-blue"] .form-select {
+    background-color: #1b263b;
+    color: #e0e1dd;
+    border-color: #415a77;
+}
+html[data-theme="dark-blue"] .text-muted {
+    color: #e0e1dd !important;
+    opacity: 0.7;
+}
+html[data-theme="dark-blue"] .navbar {
+    background-color: #1b263b !important;
+}
+html[data-theme="dark-blue"] .btn-primary {
+    background-color: #415a77;
+    border-color: #415a77;
+}
+
+/* --- General Overrides --- */
+.list-group-item a {
+    color: inherit; /* Inherit color from parent */
+}
