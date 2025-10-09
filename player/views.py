@@ -7,7 +7,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
-from django.db.models import Q, Subquery, OuterRef, F
+from django.views.decorators.csrf import csrf_exempt
 from .forms import TrackForm, PlaylistForm
 from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed
 from mutagen import File as MutagenFile
@@ -66,6 +66,10 @@ def track_list(request):
         'sort_option': request.GET.get('sort', 'name'),
     }
     return render(request, 'player/track_list.html', context)
+
+@login_required
+def play_focus(request):
+    return render(request, 'player/play_focus.html')
 
 @login_required
 def profile(request):
@@ -290,10 +294,6 @@ class RangeFileWrapper:
                 raise StopIteration()
             self.remaining -= len(data)
             return data
-
-import json
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 @require_POST
