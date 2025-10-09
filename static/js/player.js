@@ -291,5 +291,36 @@ document.addEventListener('DOMContentLoaded', function() {
     playbackSpeed.addEventListener('change', () => { if (audioPlayer.src) audioPlayer.playbackRate = parseFloat(playbackSpeed.value); });
     audioPlayer.addEventListener('error', (e) => console.error('Audio Player Error:', audioPlayer.error, 'Event:', e));
 
+    // --- KEYBOARD SHORTCUTS ---
+    document.addEventListener('keydown', (event) => {
+        const activeElement = document.activeElement;
+        const targetTagName = activeElement ? activeElement.tagName.toLowerCase() : null;
+
+        // Ignore keyboard shortcuts if the user is focused on an input, select, textarea, or button
+        if (['input', 'select', 'textarea', 'button'].includes(targetTagName)) {
+            return;
+        }
+
+        // Or if a modifier key is pressed
+        if (event.metaKey || event.ctrlKey || event.altKey) {
+            return;
+        }
+
+        switch (event.key) {
+            case ' ': // Space bar
+                event.preventDefault();
+                if (playPauseBtn) playPauseBtn.click();
+                break;
+            case 'ArrowLeft':
+                event.preventDefault();
+                if (skipBackBtn) skipBackBtn.click();
+                break;
+            case 'ArrowRight':
+                event.preventDefault();
+                if (skipForwardBtn) skipForwardBtn.click();
+                break;
+        }
+    });
+
     initializePlayer();
 });

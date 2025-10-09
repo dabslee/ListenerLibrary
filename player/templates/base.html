@@ -31,7 +31,7 @@
                             <a class="nav-link" href="{% url 'profile' %}">Profile</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                            <a class="nav-link" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
@@ -42,6 +42,9 @@
                         </li>
                     {% endif %}
                 </ul>
+                <form id="logout-form" action="{% url 'logout' %}" method="post" style="display: none;">
+                    {% csrf_token %}
+                </form>
             </div>
         </div>
     </nav>

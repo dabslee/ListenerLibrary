@@ -18,51 +18,31 @@ import json
 
 @login_required
 def track_list(request):
-    tracks_query = Track.objects.filter(owner=request.user)
+    # Fetch all tracks and related data efficiently.
+    # Prefetch playlists to avoid N+1 queries in the template for data-playlists.
+    tracks_query = Track.objects.filter(owner=request.user).order_by('name').prefetch_related('playlists')
+
     playlists = Playlist.objects.filter(owner=request.user)
     artists = Track.objects.filter(owner=request.user).values_list('artist', flat=True).distinct().order_by('artist')
 
-    # --- Filtering ---
-    playlist_filter_id = request.GET.get('playlist')
-    artist_filter = request.GET.get('artist')
-    search_query = request.GET.get('search')
-
-    if playlist_filter_id:
-        try:
-            playlist = Playlist.objects.get(id=playlist_filter_id, owner=request.user)
-            tracks_query = playlist.tracks.all()
-        except Playlist.DoesNotExist:
-            tracks_query = Track.objects.none()
-
-    if artist_filter:
-        tracks_query = tracks_query.filter(artist=artist_filter)
-
-    if search_query:
-        tracks_query = tracks_query.filter(
-            Q(name__icontains=search_query) | Q(artist__icontains=search_query)
-        )
-
-    # --- Sorting ---
-    sort_option = request.GET.get('sort', 'name')
-
-    if sort_option == 'last_played':
-        last_played_subquery = UserTrackLastPlayed.objects.filter(
-            user=request.user,
-            track=OuterRef('pk')
-        ).values('last_played')[:1]
-        tracks_query = tracks_query.annotate(
-            last_played_timestamp=Subquery(last_played_subquery)
-        ).order_by(F('last_played_timestamp').desc(nulls_last=True))
-    else:
-        tracks_query = tracks_query.order_by('name')
-
+    # We need all tracks for client-side filtering, so convert to list here.
     tracks = list(tracks_query)
+    track_ids = [t.id for t in tracks]
 
-    # --- Post-processing for progress bars ---
-    podcast_progress = PodcastProgress.objects.filter(user=request.user, track__in=[t.id for t in tracks])
+    # Get all necessary related data in a few queries
+    podcast_progress = PodcastProgress.objects.filter(user=request.user, track_id__in=track_ids)
     podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
 
+    last_played_data = UserTrackLastPlayed.objects.filter(user=request.user, track_id__in=track_ids)
+    last_played_map = {lp.track_id: lp.last_played for lp in last_played_data}
+
+    # Attach the extra data to each track object
     for track in tracks:
+        # Add last_played_iso for client-side sorting
+        last_played_dt = last_played_map.get(track.id)
+        track.last_played_iso = last_played_dt.isoformat() if last_played_dt else ''
+
+        # Add progress bar data
         if track.type == 'podcast':
             position = podcast_progress_map.get(track.id, 0)
             track.position = position
@@ -74,14 +54,16 @@ def track_list(request):
             track.position = 0
             track.progress_percentage = 0
 
+    # The GET params are still read to set the initial state of the filter controls.
+    # The actual filtering is done by JS.
     context = {
         'tracks': tracks,
         'playlists': playlists,
         'artists': artists,
-        'selected_playlist_id': int(playlist_filter_id) if playlist_filter_id else None,
-        'selected_artist': artist_filter,
-        'search_query': search_query,
-        'sort_option': sort_option,
+        'selected_playlist_id': int(request.GET.get('playlist')) if request.GET.get('playlist') else None,
+        'selected_artist': request.GET.get('artist'),
+        'search_query': request.GET.get('search'),
+        'sort_option': request.GET.get('sort', 'name'),
     }
     return render(request, 'player/track_list.html', context)
 
@@ -190,8 +172,36 @@ def create_playlist(request):
 @login_required
 def playlist_detail(request, playlist_id):
     playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
-    playlist_items = playlist.playlistitem_set.all()
-    return render(request, 'player/playlist_detail.html', {'playlist': playlist, 'playlist_items': playlist_items})
+    # Use select_related to fetch track details efficiently to prevent N+1 queries
+    playlist_items = playlist.playlistitem_set.select_related('track').all()
+
+    # Get track IDs to fetch their progress in one go
+    track_ids = [item.track.id for item in playlist_items]
+
+    # Fetch podcast progress for all relevant tracks
+    podcast_progress = PodcastProgress.objects.filter(user=request.user, track_id__in=track_ids)
+    podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
+
+    # Attach progress data to each track object
+    for item in playlist_items:
+        track = item.track
+        if track.type == 'podcast':
+            position = podcast_progress_map.get(track.id, 0)
+            track.position = position
+            if track.duration and track.duration > 0:
+                track.progress_percentage = (position / track.duration) * 100
+            else:
+                track.progress_percentage = 0
+        else:
+            # Ensure non-podcast tracks have default values
+            track.position = 0
+            track.progress_percentage = 0
+
+    context = {
+        'playlist': playlist,
+        'playlist_items': playlist_items,
+    }
+    return render(request, 'player/playlist_detail.html', context)
 
 @login_required
 def edit_playlist(request, playlist_id):
