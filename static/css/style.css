@@ -8,6 +8,7 @@
 /* --- Player Footer --- */
 footer.fixed-bottom .container .row {
     align-items: center;
+    height: 100px;
 }
 
 /* --- Track List --- */

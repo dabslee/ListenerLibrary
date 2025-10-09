@@ -1,6 +1,6 @@
 # ListenerLibrary
 
-<img src="https://img.shields.io/badge/Django-5.2.7-darkgreen?style=flat-square&logo=django&logoColor=white"> <img src="https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python&logoColor=white"> <img src="https://img.shields.io/badge/Bootstrap-5.3-purple?style=flat-square&logo=bootstrap&logoColor=white">
+<img src="https://img.shields.io/badge/Django-5.2.7-darkgreen?style=flat-square&logo=django&logoColor=white"> <img src="https://img.shields.io/badge/Python-3.12-blue?style=flat-square&logo=python&logoColor=white"> <img src="https://img.shields.io/badge/Bootstrap-5.3-purple?style=flat-square&logo=bootstrap&logoColor=white">
 
 ListenerLibrary is a mobile-friendly, web-based music player application built with Django. It allows users to upload their music, create playlists, and listen to their tracks directly in the browser. The application features a clean, responsive interface and provides core music player functionalities like playback control, track seeking, and playlist management.
 

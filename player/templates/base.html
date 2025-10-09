@@ -5,15 +5,15 @@
 {% block player_footer %}
 <footer class="fixed-bottom bg-light border-top py-2">
     <div class="row align-items-center py-3 px-5">
-        <div class="d-flex flex-md-row flex-column align-items-center justify-content-between gap-3">
+        <div class="d-flex flex-md-row flex-column align-items-center justify-content-between gap-4">
             <div class="d-flex align-items-center col-md-4">
-                <img id="player-icon" src="" class="me-2" style="width: 40px; height: 40px; display: none; border-radius: 4px;">
+                <img id="player-icon" src="" class="me-4" style="width: 60px; height: 60px; display: none; border-radius: 4px;">
                 <div>
                     <span id="player-track-name" class="fw-bold">No track selected</span>
                     <br>
                     <span id="player-track-artist" class="text-muted fst-italic">No artist</span>
                     <div id="player-playlist-info" class="text-muted small" style="display: none;">
-                        Playing from: <span id="player-playlist-name" class="fw-bold"></span>
+                        <i class="fas fa-headphones me-1"></i> <span id="player-playlist-name" class="fw-bold"></span>
                     </div>
                 </div>
             </div>
