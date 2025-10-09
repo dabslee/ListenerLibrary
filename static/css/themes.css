@@ -188,3 +188,8 @@ html[data-theme="dark-blue"] .btn-outline-secondary:hover { background-color: #7
 html[data-theme="dark"] .progress { background-color: #495057; }
 html[data-theme="light-blue"] .progress { background-color: #afd6f6; }
 html[data-theme="dark-blue"] .progress { background-color: #415a77; }
+
+/* --- Audio player slider --- */
+html[data-theme="dark"] .form-range::-webkit-slider-runnable-track { background: #495057; }
+html[data-theme="light-blue"] .form-range::-webkit-slider-runnable-track { background: #afd6f6; }
+html[data-theme="dark-blue"] .form-range::-webkit-slider-runnable-track { background: #415a77; }
