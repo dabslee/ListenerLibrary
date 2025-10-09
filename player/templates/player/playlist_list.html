@@ -9,11 +9,16 @@
     <div class="list-group">
         {% for playlist in playlists %}
             <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <a href="{% url 'playlist_detail' playlist.id %}" class="text-decoration-none text-dark d-flex align-items-center">
+                <a href="{% url 'playlist_detail' playlist.id %}"
+                class="text-decoration-none d-flex align-items-center flex-grow-1 me-3">
                     {% if playlist.image %}
-                        <img src="{{ playlist.image.url }}" alt="{{ playlist.name }}" style="width: 50px; height: 50px; border-radius: 5px; object-fit: cover;" class="me-3">
+                        <img src="{{ playlist.image.url }}"
+                            alt="{{ playlist.name }}"
+                            style="width: 50px; height: 50px; border-radius: 5px; object-fit: cover;"
+                            class="me-3">
                     {% else %}
-                        <div class="bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; border-radius: 5px;">
+                        <div class="bg-secondary me-3 d-flex align-items-center justify-content-center"
+                            style="width: 50px; height: 50px; border-radius: 5px;">
                             <i class="fas fa-music text-white"></i>
                         </div>
                     {% endif %}
@@ -21,9 +26,12 @@
                         <h5 class="mb-1">{{ playlist.name }}</h5>
                     </div>
                 </a>
-                <div>
-                    <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-outline-primary btn-sm me-2">Edit</a>
-                    <a href="{% url 'delete_playlist' playlist.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+
+                <div class="d-flex">
+                    <a href="{% url 'edit_playlist' playlist.id %}"
+                    class="btn btn-outline-primary btn-sm me-2">Edit</a>
+                    <a href="{% url 'delete_playlist' playlist.id %}"
+                    class="btn btn-outline-danger btn-sm">Delete</a>
                 </div>
             </div>
         {% empty %}

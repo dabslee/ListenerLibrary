@@ -12,6 +12,7 @@ from .forms import TrackForm, PlaylistForm
 from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed
 from mutagen import File as MutagenFile
 from django.utils import timezone
+from django.db import models
 
 import json
 
