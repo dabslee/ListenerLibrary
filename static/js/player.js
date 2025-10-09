@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const skipForwardBtn = document.getElementById('skip-forward-btn');
     const playbackSpeed = document.getElementById('playback-speed');
 
+    let currentTrackId = null;
+
     // Function to format time from seconds to MM:SS
     function formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) {
@@ -62,8 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Global function to be called from the template
-    window.playTrack = function(trackUrl, trackName, iconUrl) {
+    window.playTrack = function(trackId, trackUrl, trackName, iconUrl) {
         console.log("playTrack called with URL:", trackUrl);
+        currentTrackId = trackId;
         audioPlayer.src = trackUrl;
         playerTrackName.textContent = trackName;
 
@@ -130,6 +133,53 @@ document.addEventListener('DOMContentLoaded', function() {
             audioPlayer.playbackRate = parseFloat(playbackSpeed.value);
         }
     });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    function updatePosition() {
+        if (!currentTrackId || audioPlayer.paused) return;
+
+        fetch('/api/update_position/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                track_id: currentTrackId,
+                position: audioPlayer.currentTime
+            })
+        });
+    }
+
+    setInterval(updatePosition, 5000); // Update every 5 seconds
+
+    function resumePlayback() {
+        fetch('/api/get_last_position/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    playTrack(data.track_id, data.track_url, data.track_name, data.icon_url);
+                    audioPlayer.currentTime = data.position;
+                }
+            });
+    }
+
+    resumePlayback();
 
     // Comprehensive error handling for the audio element
     audioPlayer.addEventListener('error', (e) => {

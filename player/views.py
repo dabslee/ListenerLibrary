@@ -1,17 +1,29 @@
 import os
 import re
 import mimetypes
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
-from django.http import FileResponse, StreamingHttpResponse
+from django.http import FileResponse, StreamingHttpResponse, JsonResponse
+from django.db.models import OuterRef, Subquery, FloatField
 from .forms import TrackForm
-from .models import Track
+from .models import Track, PlaybackPosition
 
 @login_required
 def track_list(request):
-    tracks = Track.objects.filter(owner=request.user)
+    user_positions = PlaybackPosition.objects.filter(
+        track=OuterRef('pk'),
+        user=request.user
+    ).values('position')[:1]
+
+    tracks = Track.objects.filter(owner=request.user).annotate(
+        user_position=Subquery(user_positions, output_field=FloatField())
+    ).order_by('name')
+
     return render(request, 'player/track_list.html', {'tracks': tracks})
 
 @login_required
@@ -29,15 +41,21 @@ def register(request):
         form = UserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
 
+import logging
+logger = logging.getLogger(__name__)
+
 @login_required
 def upload_track(request):
     if request.method == 'POST':
         form = TrackForm(request.POST, request.FILES)
         if form.is_valid():
+            logger.info("Form is valid, saving track.")
             track = form.save(commit=False)
             track.owner = request.user
             track.save()
             return redirect('track_list')
+        else:
+            logger.error(f"Form errors: {form.errors.as_json()}")
     else:
         form = TrackForm()
     return render(request, 'player/upload_track.html', {'form': form})
@@ -95,8 +113,69 @@ class RangeFileWrapper:
             return data
 
 @login_required
+@require_POST
+@csrf_exempt
+def update_playback_position(request):
+    try:
+        data = json.loads(request.body)
+        track_id = data.get('track_id')
+        position = data.get('position')
+
+        if track_id is None or position is None:
+            return JsonResponse({'status': 'error', 'message': 'Missing track_id or position'}, status=400)
+
+        track = get_object_or_404(Track, pk=track_id, owner=request.user)
+
+        track.last_known_position = position
+        track.save()
+
+        if track.type == 'podcast':
+            PlaybackPosition.objects.update_or_create(
+                user=request.user,
+                track=track,
+                defaults={'position': position}
+            )
+
+        return JsonResponse({'status': 'success'})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def get_last_position(request):
+    last_played_track_id = request.session.get('last_played_track_id')
+    if not last_played_track_id:
+        return JsonResponse({'status': 'error', 'message': 'No last played track found'}, status=404)
+
+    try:
+        track = Track.objects.get(pk=last_played_track_id, owner=request.user)
+        position_instance = PlaybackPosition.objects.filter(user=request.user, track=track).first()
+
+        position = 0
+        if track.type == 'podcast':
+            if position_instance:
+                position = position_instance.position
+        else:
+            position = track.last_known_position
+
+        return JsonResponse({
+            'status': 'success',
+            'track_id': track.id,
+            'track_name': track.name,
+            'track_url': track.file.url,
+            'icon_url': track.icon.url if track.icon else None,
+            'position': position,
+            'track_type': track.type,
+            'duration': track.duration,
+        })
+    except Track.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Track not found'}, status=404)
+
+@login_required
 def stream_track(request, track_id):
     track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    request.session['last_played_track_id'] = track.id
     path = track.file.path
 
     range_header = request.META.get('HTTP_RANGE', '').strip()

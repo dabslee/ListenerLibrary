@@ -1,5 +1,6 @@
 from django import forms
 from .models import Track
+import mutagen
 
 class TrackForm(forms.ModelForm):
     class Meta:
@@ -20,3 +21,20 @@ class TrackForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields['file'].required = False
             self.fields['icon'].required = False
+
+    def clean_file(self):
+        file = self.cleaned_data.get('file', False)
+        if file:
+            try:
+                # Ensure the file pointer is at the beginning
+                file.seek(0)
+                audio = mutagen.File(file)
+                if audio:
+                    self.instance.duration = audio.info.length
+                # VERY IMPORTANT: seek back to the beginning of the file so that
+                # Django's file saving mechanism can read it from the start.
+                file.seek(0)
+            except Exception as e:
+                # You might want to log this error
+                raise forms.ValidationError("Could not read audio file metadata.")
+        return file

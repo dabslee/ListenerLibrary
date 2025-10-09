@@ -10,7 +10,7 @@
     <div class="list-group">
         {% for track in tracks %}
             <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center" style="cursor: pointer;" onclick="playTrack('{% url 'stream_track' track.id %}', '{{ track.name|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}');">
+                <div class="d-flex align-items-center" style="cursor: pointer;" onclick="playTrack('{{ track.id }}', '{% url 'stream_track' track.id %}', '{{ track.name|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}');">
                     {% if track.icon %}
                         <img src="{{ track.icon.url }}" alt="{{ track.name }}" style="width: 50px; height: 50px; border-radius: 5px; object-fit: cover;" class="me-3">
                     {% else %}
@@ -25,6 +25,11 @@
                             <p class="mb-1"><small class="text-muted">By {{ track.artist }}</small></p>
                         {% endif %}
                         <small class="text-muted">{{ track.get_type_display }}</small>
+                        {% if track.type == 'podcast' and track.user_position and track.duration > 0 %}
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar" role="progressbar" style="width: {% widthratio track.user_position track.duration 100 %}%" aria-valuenow="{{ track.user_position }}" aria-valuemin="0" aria-valuemax="{{ track.duration }}"></div>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div>
