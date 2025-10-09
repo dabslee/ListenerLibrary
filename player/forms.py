@@ -1,5 +1,14 @@
 from django import forms
-from .models import Track
+from .models import Track, Playlist
+
+class PlaylistForm(forms.ModelForm):
+    class Meta:
+        model = Playlist
+        fields = ['name', 'image']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'image': forms.FileInput(attrs={'class': 'form-control'}),
+        }
 
 class TrackForm(forms.ModelForm):
     class Meta:

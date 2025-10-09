@@ -4,5 +4,19 @@
     <h2 class="mb-4">Profile</h2>
     <p class="lead">Welcome, {{ user.username }}!</p>
     <hr>
+
+    <div class="mt-4">
+        <h4>Site Theme</h4>
+        <div class="mb-3">
+            <label for="theme-select" class="form-label">Choose a color theme:</label>
+            <select id="theme-select" class="form-select" style="max-width: 200px;">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="light-blue">Light Blue</option>
+                <option value="dark-blue">Dark Blue</option>
+            </select>
+        </div>
+    </div>
+    <hr>
     <p>This is your profile page. More settings and features can be added here in the future.</p>
 {% endblock %}

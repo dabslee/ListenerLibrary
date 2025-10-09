@@ -1,5 +1,91 @@
 /* Main stylesheet for ListenerLibrary */
 
 body {
-    padding-bottom: 80px; /* Add padding to the bottom to avoid content being hidden by the fixed footer */
+    /* Add padding to the bottom to avoid content being hidden by the fixed footer */
+    padding-bottom: 100px;
+}
+
+/* --- Player Footer --- */
+footer.fixed-bottom .container .row {
+    align-items: center;
+}
+
+/* --- Track List --- */
+.podcast-progress-container {
+    width: 150px; /* Fixed width for alignment */
+    text-align: right;
+}
+
+/* --- Mobile Friendliness --- */
+@media (max-width: 767.98px) {
+    body {
+        /* Increase padding for the taller mobile footer */
+        padding-bottom: 200px;
+    }
+
+    footer.fixed-bottom {
+        height: auto;
+        padding: 10px 0;
+    }
+
+    /* Stack columns and center content */
+    footer.fixed-bottom .row {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    footer.fixed-bottom .col-md-3,
+    footer.fixed-bottom .col-md-6 {
+        width: 100%;
+        max-width: 100%;
+        flex-basis: auto;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    /* Reorder: Controls first, then track info */
+    footer.fixed-bottom .col-md-6 { order: 1; }
+    footer.fixed-bottom .col-md-3 { order: 2; }
+
+    /* The main flex container for all control elements */
+    footer.fixed-bottom .col-md-6.d-flex {
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 10px; /* Space between all items */
+    }
+
+    /* Group 1: The buttons, force them to be on one line */
+    .player-buttons-group {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        order: 1;
+    }
+
+    /* Group 2: The seek bar and time, on its own line */
+    .seek-bar-group {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        order: 2;
+    }
+
+    #seek-bar {
+        flex-grow: 1;
+        margin: 0 10px;
+    }
+
+    /* Ensure track info is centered */
+    footer.fixed-bottom .col-md-3 .d-flex {
+        justify-content: center;
+    }
+}
+
+/* --- Theme Active States --- */
+#shuffle-btn.active {
+    color: #0d6efd; /* Bootstrap primary color */
+    box-shadow: 0 0 5px #0d6efd;
 }
