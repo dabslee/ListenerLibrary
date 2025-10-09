@@ -52,6 +52,10 @@
         </div>
     </nav>
 
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100">
+        <!-- Toasts will be appended here -->
+    </div>
+
     <main class="container mt-4 mb-5 pb-5">
         {% block content %}{% endblock %}
     </main>
@@ -114,6 +118,7 @@
     </script>
 
     <script src="{% static 'js/player.js' %}"></script>
+    <script src="{% static 'js/toasts.js' %}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const themeSelect = document.getElementById('theme-select');
