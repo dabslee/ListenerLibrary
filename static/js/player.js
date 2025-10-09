@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Global function to be called from the template
     window.playTrack = function(trackUrl, trackName, iconUrl) {
+        console.log("playTrack called with URL:", trackUrl);
         audioPlayer.src = trackUrl;
         playerTrackName.textContent = trackName;
 
@@ -73,7 +74,16 @@ document.addEventListener('DOMContentLoaded', function() {
             playerIcon.style.display = 'none';
         }
 
-        audioPlayer.play();
+        const playPromise = audioPlayer.play();
+        if (playPromise !== undefined) {
+            playPromise.then(_ => {
+                console.log("Audio playback started successfully via promise.");
+            }).catch(error => {
+                console.error("Audio playback failed via promise:", error);
+                // If autoplay is prevented, update the UI to show the play button
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            });
+        }
     }
 
     // Skip back 15 seconds
