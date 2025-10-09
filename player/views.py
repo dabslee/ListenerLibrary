@@ -14,42 +14,24 @@ import json
 
 @login_required
 def track_list(request):
-    # Eagerly load tracks into a list to modify them
     tracks = list(Track.objects.filter(owner=request.user))
 
-    # Get last playback state, pre-fetching the related track object
-    try:
-        playback_state = UserPlaybackState.objects.select_related('track').get(user=request.user)
-    except UserPlaybackState.DoesNotExist:
-        playback_state = None
+    # The context processor now handles fetching playback_state and podcast_positions_json.
+    # We still need to calculate the progress percentage for the initial render of the progress bars.
+    podcast_progress = PodcastProgress.objects.filter(user=request.user)
+    podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
 
-    # Get all podcast progress for the user at once
-    podcast_progress_list = PodcastProgress.objects.filter(user=request.user)
-    podcast_progress_map = {p.track_id: p for p in podcast_progress_list}
-
-    # Attach progress data directly to each track object for easier template rendering
     for track in tracks:
         if track.type == 'podcast' and track.id in podcast_progress_map:
-            progress = podcast_progress_map[track.id]
-            # Calculate percentage, avoiding division by zero
+            position = podcast_progress_map[track.id]
             if track.duration and track.duration > 0:
-                track.progress_percentage = (progress.position / track.duration) * 100
+                track.progress_percentage = (position / track.duration) * 100
             else:
                 track.progress_percentage = 0
         else:
-            # Ensure the attribute exists on all tracks
             track.progress_percentage = 0
 
-    # Create a simple map of track_id -> position for JavaScript logic
-    podcast_positions_map = {p.track_id: p.position for p in podcast_progress_list}
-
-    context = {
-        'tracks': tracks,
-        'playback_state': playback_state,
-        # This will be used by JavaScript to set the start time for podcasts
-        'podcast_positions_json': json.dumps(podcast_positions_map),
-    }
-    return render(request, 'player/track_list.html', context)
+    return render(request, 'player/track_list.html', {'tracks': tracks})
 
 @login_required
 def profile(request):
