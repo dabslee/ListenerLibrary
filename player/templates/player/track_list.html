@@ -28,9 +28,9 @@
                             <p class="mb-1"><small class="text-muted">By {{ track.artist }}</small></p>
                         {% endif %}
                         <small class="text-muted">{{ track.get_type_display }}</small>
-                        {% if track.type == 'podcast' and track.progress_percentage > 0 %}
+                        {% if track.type == 'podcast' %}
                             <div class="progress mt-2" style="height: 5px;">
-                                <div class="progress-bar" role="progressbar" style="width: {{ track.progress_percentage }}%;" aria-valuenow="{{ track.progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress-bar" role="progressbar" style="width: {{ track.progress_percentage|default:0 }}%;" aria-valuenow="{{ track.progress_percentage|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                         {% endif %}
                     </div>
@@ -57,7 +57,8 @@
         "trackName": "{{ playback_state.track.name|escapejs }}",
         "trackIcon": "{% if playback_state.track.icon %}{{ playback_state.track.icon.url }}{% else %}{% endif %}",
         "trackStreamUrl": "{% url 'stream_track' playback_state.track.id %}",
-        "position": {{ playback_state.last_played_position }}
+        "position": {{ playback_state.last_played_position }},
+        "trackType": "{{ playback_state.track.type }}"
     }
     {% endif %}
     </script>
