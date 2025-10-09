@@ -1,5 +1,4 @@
 Features to implement:
-- Check all themes for consistent coloring
 - Use cloud-hosted postgres instead of SQL db
 - Ensure mobile-friendliness
     - Visually
