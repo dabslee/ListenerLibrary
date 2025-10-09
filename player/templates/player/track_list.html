@@ -48,19 +48,4 @@
         {% endfor %}
     </div>
 
-    {{ podcast_positions_json|json_script:"podcast-positions-data" }}
-
-    <script id="playback-state-data" type="application/json">
-    {% if playback_state and playback_state.track %}
-    {
-        "trackId": {{ playback_state.track.id }},
-        "trackName": "{{ playback_state.track.name|escapejs }}",
-        "trackIcon": "{% if playback_state.track.icon %}{{ playback_state.track.icon.url }}{% else %}{% endif %}",
-        "trackStreamUrl": "{% url 'stream_track' playback_state.track.id %}",
-        "position": {{ playback_state.last_played_position }},
-        "trackType": "{{ playback_state.track.type }}"
-    }
-    {% endif %}
-    </script>
-
 {% endblock %}
