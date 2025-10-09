@@ -3,13 +3,10 @@
 
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2>{{ playlist.name }}</h2>
-            <a href="{% url 'playlist_list' %}" class="btn btn-secondary btn-sm">Back to Playlists</a>
-        </div>
-        <div>
-            <button id="play-all-btn" class="btn btn-success">Play All</button>
-            <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary">Edit Playlist Details</a>
+        <h2>{{ playlist.name }}</h2>
+        <div class="d-flex flex-wrap justify-content-end gap-1">
+            <button id="play-all-btn" class="btn btn-success"><i class="fas fa-play me-2"></i>Play All</button>
+            <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary"><i class="fas fa-pen me-2"></i>Edit Playlist Details</a>
         </div>
     </div>
 
@@ -50,14 +47,9 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="d-flex flex-column align-items-end" style="min-width: 150px;">
-                             <div class="mb-2">
-                                <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})" title="Remove from Playlist">
-                                    <i class="fas fa-xmark"></i>
-                                </button>
-                            </div>
+                        <div class="d-flex flex-row align-items-center justify-content-end" style="min-width: 150px;">
                             {% if item.track.type == 'podcast' %}
-                                <div class="w-100">
+                                <div class="w-100 me-3">
                                     <div class="progress" style="height: 5px;">
                                         <div class="progress-bar" role="progressbar" style="width: {{ item.track.progress_percentage|default:0 }}%;" aria-valuenow="{{ item.track.progress_percentage|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
@@ -66,6 +58,11 @@
                                     </div>
                                 </div>
                             {% endif %}
+                            <div class="mb-2">
+                                <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})" title="Remove from Playlist">
+                                    <i class="fas fa-xmark"></i>
+                                </button>
+                            </div>
                         </div>
                     </li>
                 {% empty %}
