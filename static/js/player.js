@@ -141,6 +141,12 @@ document.addEventListener('DOMContentLoaded', function() {
         playerIcon.src = iconUrl;
         playerIcon.style.display = iconUrl ? 'inline-block' : 'none';
 
+        // Link to the full player page
+        const playerInfoLink = document.getElementById('player-info-link');
+        if (playerInfoLink) {
+            playerInfoLink.href = `/player/${track.id}/`;
+        }
+
         updateMediaSession();
 
         // Set src and load
@@ -329,6 +335,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const iconUrl = (currentTrack.icon_url && currentTrack.icon_url !== 'None' && currentTrack.icon_url !== 'null') ? currentTrack.icon_url : '';
                 playerIcon.src = iconUrl;
                 playerIcon.style.display = iconUrl ? 'inline-block' : 'none';
+
+                // Link to the full player page
+                const playerInfoLink = document.getElementById('player-info-link');
+                if (playerInfoLink) {
+                    playerInfoLink.href = `/player/${currentTrack.id}/`;
+                }
 
                 updateMediaSession(); // Set metadata for the loaded track
 

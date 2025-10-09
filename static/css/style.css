@@ -89,3 +89,105 @@ footer.fixed-bottom .container .row {
     color: #0d6efd; /* Bootstrap primary color */
     box-shadow: 0 0 5px #0d6efd;
 }
+
+/* --- Player Page --- */
+.player-page-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #121212; /* Dark background */
+    color: white;
+    padding-top: 0; /* Override default padding */
+    padding-bottom: 0; /* Override default padding */
+}
+
+.player-page-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    max-width: 400px; /* Limit width on larger screens */
+    padding: 20px;
+}
+
+.player-page-artwork img {
+    width: 100%;
+    max-width: 350px;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 60px rgba(0, 0, 0, 0.5);
+}
+
+.player-page-info-container {
+    width: 100%;
+}
+
+.player-page-info {
+    margin-bottom: 20px;
+}
+
+.player-page-info h2 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.player-page-info p {
+    font-size: 1rem;
+    color: #b3b3b3; /* Lighter text for artist */
+    margin: 0;
+}
+
+.player-page-progress {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.progress-bar-wrapper {
+    width: 100%;
+}
+
+.player-page-progress .form-range {
+    width: 100%;
+}
+
+.player-page-progress .time-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #b3b3b3;
+}
+
+.player-page-controls-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px; /* Adjust gap for more controls */
+    margin-bottom: 20px;
+}
+
+.player-page-controls-main .btn-control {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem; /* Slightly smaller for side buttons */
+}
+
+.player-page-controls-main .btn-play {
+    font-size: 2.2rem; /* Main play button */
+    background-color: #fff;
+    color: #121212;
+    border-radius: 50%;
+    width: 55px;
+    height: 55px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#player-page-shuffle-btn.active {
+    color: #1DB954; /* Spotify green for active state */
+}

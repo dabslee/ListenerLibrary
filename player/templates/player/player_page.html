@@ -1,0 +1,218 @@
+{% extends "raw_base.html" %}
+{% load static %}
+{% load player_extras %}
+
+{% block bodymods %}class="player-page-body"{% endblock %}
+
+{% block content %}
+<style>
+    /* Hide the main navbar on the dedicated player page */
+    .navbar {
+        display: none !important;
+    }
+    /* Ensure the main content takes up the full view height */
+    main.container {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<div class="player-page-container">
+    <div class="player-page-artwork">
+        <img id="player-page-artwork-img" src="{% if track.icon %}{{ track.icon.url }}{% else %}{% static 'images/default_artwork.png' %}{% endif %}" alt="Artwork for {{ track.name }}">
+    </div>
+
+    <div class="player-page-info-container">
+        <div class="player-page-info">
+            <h2 id="player-page-track-name">{{ track.name }}</h2>
+            <p id="player-page-track-artist">{{ track.artist|default:"Unknown Artist" }}</p>
+        </div>
+
+        <div class="player-page-progress">
+            <div class="progress-bar-wrapper">
+                <input type="range" id="player-page-seeker" class="form-range" min="0" max="{{ track.duration|default:0 }}" value="0">
+            </div>
+            <div class="time-display">
+                <span id="player-page-current-time">0:00</span>
+                <span id="player-page-duration">{{ track.duration|format_duration }}</span>
+            </div>
+        </div>
+
+        <div class="player-page-controls-main d-flex justify-content-center align-items-center gap-3">
+            <button id="player-page-shuffle-btn" class="btn btn-control"><i class="fas fa-random"></i></button>
+            <button id="player-page-prev-btn" class="btn btn-control"><i class="fas fa-step-backward"></i></button>
+            <button id="player-page-skip-back-btn" class="btn btn-control"><i class="fas fa-backward"></i></button>
+            <button id="player-page-play-pause-btn" class="btn btn-control btn-play"><i class="fas fa-play"></i></button>
+            <button id="player-page-skip-forward-btn" class="btn btn-control"><i class="fas fa-forward"></i></button>
+            <button id="player-page-next-btn" class="btn btn-control"><i class="fas fa-step-forward"></i></button>
+            <select id="player-page-playback-speed" class="form-select form-select-sm bg-dark text-white" style="width: auto;">
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="0.9">0.9x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.1">1.1x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+            </select>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block player_footer %}
+{# The main player footer is intentionally left empty on this page #}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // --- UI ELEMENTS ---
+    const audio = new Audio();
+    const playPauseBtn = document.getElementById('player-page-play-pause-btn');
+    const seeker = document.getElementById('player-page-seeker');
+    const currentTimeEl = document.getElementById('player-page-current-time');
+    const durationEl = document.getElementById('player-page-duration');
+    const artworkImg = document.getElementById('player-page-artwork-img');
+    const trackNameEl = document.getElementById('player-page-track-name');
+    const trackArtistEl = document.getElementById('player-page-track-artist');
+    const prevBtn = document.getElementById('player-page-prev-btn');
+    const nextBtn = document.getElementById('player-page-next-btn');
+    const skipBackBtn = document.getElementById('player-page-skip-back-btn');
+    const skipForwardBtn = document.getElementById('player-page-skip-forward-btn');
+    const shuffleBtn = document.getElementById('player-page-shuffle-btn');
+    const playbackSpeedSelect = document.getElementById('player-page-playback-speed');
+
+    // --- STATE ---
+    let originalPlaylist = [];
+    let shuffledPlaylist = [];
+    let playQueue = [];
+    let currentTrackIndex = -1;
+    let isShuffle = false;
+    const defaultArtwork = "{% static 'images/default_artwork.png' %}";
+
+    // --- UTILITY FUNCTIONS ---
+    function formatTime(seconds) {
+        if (isNaN(seconds) || seconds < 0) return "0:00";
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
+    function shuffleArray(array) {
+        let newArray = [...array];
+        for (let i = newArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+    }
+
+    function updateNavButtons() {
+        prevBtn.disabled = currentTrackIndex <= 0;
+        nextBtn.disabled = currentTrackIndex >= playQueue.length - 1;
+    }
+
+    // --- CORE PLAYER LOGIC ---
+    function loadTrack(track) {
+        if (!track) return;
+
+        audio.src = track.stream_url;
+        trackNameEl.textContent = track.name;
+        trackArtistEl.textContent = track.artist || "Unknown Artist";
+        artworkImg.src = track.icon_url || defaultArtwork;
+
+        audio.load();
+        audio.play().catch(e => console.error("Playback error:", e));
+    }
+
+    function playNextTrack() {
+        if (currentTrackIndex < playQueue.length - 1) {
+            currentTrackIndex++;
+            loadTrack(playQueue[currentTrackIndex]);
+        }
+        updateNavButtons();
+    }
+
+    function playPrevTrack() {
+        if (currentTrackIndex > 0) {
+            currentTrackIndex--;
+            loadTrack(playQueue[currentTrackIndex]);
+        }
+        updateNavButtons();
+    }
+
+    // --- INITIALIZATION ---
+    function initialize() {
+        const playlistData = JSON.parse('{{ playlist_data|safe }}');
+        originalPlaylist = playlistData;
+        shuffledPlaylist = shuffleArray(originalPlaylist);
+        playQueue = originalPlaylist; // Default to normal order
+
+        const initialTrackId = {{ track.id }};
+        currentTrackIndex = playQueue.findIndex(t => t.id === initialTrackId);
+
+        if (currentTrackIndex === -1) {
+            console.error("Initial track not found in playlist.");
+            return;
+        }
+
+        loadTrack(playQueue[currentTrackIndex]);
+        updateNavButtons();
+    }
+
+    // --- EVENT LISTENERS ---
+    playPauseBtn.addEventListener('click', () => {
+        if (audio.paused) {
+            audio.play();
+        } else {
+            audio.pause();
+        }
+    });
+
+    audio.addEventListener('play', () => playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>');
+    audio.addEventListener('pause', () => playPauseBtn.innerHTML = '<i class="fas fa-play"></i>');
+    audio.addEventListener('ended', playNextTrack);
+
+    audio.addEventListener('timeupdate', () => {
+        seeker.value = audio.currentTime;
+        currentTimeEl.textContent = formatTime(audio.currentTime);
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+        seeker.max = audio.duration;
+        durationEl.textContent = formatTime(audio.duration);
+    });
+
+    seeker.addEventListener('input', () => {
+        audio.currentTime = seeker.value;
+    });
+
+    skipBackBtn.addEventListener('click', () => audio.currentTime -= 15);
+    skipForwardBtn.addEventListener('click', () => audio.currentTime += 15);
+
+    nextBtn.addEventListener('click', playNextTrack);
+    prevBtn.addEventListener('click', playPrevTrack);
+
+    shuffleBtn.addEventListener('click', () => {
+        isShuffle = !isShuffle;
+        shuffleBtn.classList.toggle('active', isShuffle);
+
+        const currentTrackId = playQueue[currentTrackIndex].id;
+        playQueue = isShuffle ? shuffledPlaylist : originalPlaylist;
+        currentTrackIndex = playQueue.findIndex(t => t.id === currentTrackId);
+        updateNavButtons();
+    });
+
+    playbackSpeedSelect.addEventListener('change', () => {
+        audio.playbackRate = parseFloat(playbackSpeedSelect.value);
+    });
+
+    initialize();
+});
+</script>
+{% endblock %}

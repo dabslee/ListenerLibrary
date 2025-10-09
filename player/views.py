@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Subquery, OuterRef, F
 from .forms import TrackForm, PlaylistForm
@@ -366,3 +367,26 @@ def stream_track(request, track_id):
 
     resp['Accept-Ranges'] = 'bytes'
     return resp
+
+@login_required
+def player_view(request, track_id):
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+
+    # Fetch all tracks for the user to create a playlist
+    all_tracks = Track.objects.filter(owner=request.user).order_by('name')
+
+    # Create a list of track data for JavaScript
+    playlist_data = [{
+        'id': t.id,
+        'name': t.name,
+        'artist': t.artist,
+        'stream_url': request.build_absolute_uri(reverse('stream_track', args=[t.id])),
+        'icon_url': t.icon.url if t.icon else None,
+        'type': t.type
+    } for t in all_tracks]
+
+    context = {
+        'track': track,
+        'playlist_data': json.dumps(playlist_data)
+    }
+    return render(request, 'player/player_page.html', context)
