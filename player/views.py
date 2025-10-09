@@ -1,6 +1,7 @@
 import os
 import re
 import mimetypes
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
@@ -303,16 +304,26 @@ def update_playback_state(request):
         data = json.loads(request.body)
         track_id = data.get('track_id')
         position = data.get('position')
+        playlist_id = data.get('playlist_id')
+        shuffle = data.get('shuffle', False)
 
         if track_id is None or position is None:
             return JsonResponse({'status': 'error', 'message': 'Missing track_id or position'}, status=400)
 
         track = get_object_or_404(Track, pk=track_id, owner=request.user)
+        playlist = None
+        if playlist_id:
+            playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
 
         # Update general playback state
         UserPlaybackState.objects.update_or_create(
             user=request.user,
-            defaults={'track': track, 'last_played_position': position}
+            defaults={
+                'track': track,
+                'last_played_position': position,
+                'playlist': playlist,
+                'shuffle': shuffle,
+            }
         )
 
         # Update last played timestamp
@@ -334,8 +345,26 @@ def update_playback_state(request):
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
     except Exception as e:
+        logging.exception("Error updating playback state")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
+
+@login_required
+def playlist_tracks_api(request, playlist_id):
+    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    items = playlist.playlistitem_set.select_related('track').order_by('order')
+    tracks_data = []
+    for item in items:
+        track = item.track
+        tracks_data.append({
+            'id': track.id,
+            'name': track.name,
+            'artist': track.artist,
+            'url': request.build_absolute_uri(track.file.url),
+            'icon': request.build_absolute_uri(track.icon.url) if track.icon else None,
+            'type': track.type,
+        })
+    return JsonResponse(tracks_data, safe=False)
 
 @login_required
 def stream_track(request, track_id):
