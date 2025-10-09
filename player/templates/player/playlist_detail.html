@@ -118,14 +118,14 @@ function removeFromPlaylist(playlistId, trackId) {
             }
             // Update the playlistData array to reflect the change
             playlistData = playlistData.filter(track => track.id !== trackId);
-            showToast(data.message, data.status);
+            showToast(data.message, 'success');
         } else {
-            showToast(data.message, data.status);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error: ' + error, 'error');
+        showToast('An error occurred while removing the track.', 'error');
     });
 }
 </script>
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (playlistData.length > 0) {
                 window.playPlaylist(playlistData, 0);
             } else {
-                showToast("This playlist is empty!", 'warning');
+                showToast("This playlist is empty!", "warning");
             }
         });
     }
