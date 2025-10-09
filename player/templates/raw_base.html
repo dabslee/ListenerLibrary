@@ -93,7 +93,12 @@
         "trackIcon": "{% if playback_state.track.icon %}{{ playback_state.track.icon.url }}{% else %}{% endif %}",
         "trackStreamUrl": "{% url 'stream_track' playback_state.track.id %}",
         "position": {{ playback_state.last_played_position }},
-        "trackType": "{{ playback_state.track.type }}"
+        "trackType": "{{ playback_state.track.type }}",
+        "playlist": {% if playback_state.playlist %}{
+            "id": {{ playback_state.playlist.id }},
+            "name": "{{ playback_state.playlist.name|escapejs }}"
+        }{% else %}null{% endif %},
+        "shuffle": {% if playback_state.shuffle %}true{% else %}false{% endif %}
     }
     {% endif %}
     </script>
