@@ -1,12 +1,3 @@
 Features to implement:
-- Grouping tracks into ordered playlists
-    - Playing playlists instead of individual tracks, where the player automatically goes to the next track after finishing one
-    - Buttons to go to next track or previous track
-    - A button to shuffle play order (without changing order of underlying playlist)
-- Sorting and displaying tracks (without page refresh)
-    - Being able to sort tracks by alphabetical order or last played
-    - Being able to filter tracks by artist or playlist
-    - Being able to search tracks by keyword
-- Styling
-    - Favicon
-    - Option to set color themes on profile page (light, dark, light blue, dark blue)
+- Have the search form on the tracks list page work without reloading the page
+- 

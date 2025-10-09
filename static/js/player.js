@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const durationEl = document.getElementById('duration');
     const playerIcon = document.getElementById('player-icon');
     const playerTrackName = document.getElementById('player-track-name');
+    const playerTrackArtist = document.getElementById('player-track-artist');
     const skipBackBtn = document.getElementById('skip-back-btn');
     const skipForwardBtn = document.getElementById('skip-forward-btn');
     const playbackSpeed = document.getElementById('playback-speed');
@@ -88,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         audioPlayer.src = track.stream_url;
         playerTrackName.textContent = track.name;
+        playerTrackArtist.textContent = track.artist || 'No artist';
         playerIcon.src = (track.icon_url && track.icon_url !== 'None' && track.icon_url !== 'null') ? track.icon_url : '';
         playerIcon.style.display = (track.icon_url && track.icon_url !== 'None' && track.icon_url !== 'null') ? 'inline-block' : 'none';
 
@@ -123,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- GLOBAL FUNCTIONS ---
-    window.playTrack = function(trackUrl, trackName, iconUrl, trackId, trackType) {
+    window.playTrack = function(trackUrl, trackName, trackArtist, iconUrl, trackId, trackType) {
         // When a single track is played, clear the playlist context
         playQueue = [];
         originalPlaylist = [];
@@ -134,6 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const trackObject = {
             id: trackId,
             name: trackName,
+            artist: trackArtist,
             icon_url: iconUrl,
             stream_url: trackUrl,
             type: trackType
@@ -255,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const trackObject = {
                     id: state.trackId,
                     name: state.trackName,
+                    artist: state.trackArtist,
                     icon_url: state.trackIcon,
                     stream_url: state.trackStreamUrl,
                     type: state.trackType
@@ -262,6 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentTrack = trackObject;
                 audioPlayer.src = currentTrack.stream_url;
                 playerTrackName.textContent = currentTrack.name;
+                playerTrackArtist.textContent = currentTrack.artist || 'No artist';
                 playerIcon.src = (currentTrack.icon_url && currentTrack.icon_url !== 'None' && currentTrack.icon_url !== 'null') ? currentTrack.icon_url : '';
                 playerIcon.style.display = (currentTrack.icon_url && currentTrack.icon_url !== 'None' && currentTrack.icon_url !== 'null') ? 'inline-block' : 'none';
 
