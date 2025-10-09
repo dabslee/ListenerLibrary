@@ -22,4 +22,5 @@ urlpatterns = [
     path('playlists/<int:playlist_id>/reorder/', views.reorder_playlist, name='reorder_playlist'),
     path('playlists/add_track/', views.add_track_to_playlist, name='add_track_to_playlist'),
     path('playlists/remove_track/<int:playlist_id>/<int:track_id>/', views.remove_track_from_playlist, name='remove_track_from_playlist'),
+    path('api/playlist_tracks/<int:playlist_id>/', views.playlist_tracks_api, name='playlist_tracks_api'),
 ]

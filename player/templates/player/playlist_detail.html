@@ -28,7 +28,7 @@
                         data-track-id="{{ item.track.id }}"
                         id="playlist-item-{{ item.track.id }}"
                         data-testid="track-item-{{ item.track.id }}">
-                        <div class="flex-grow-1 d-flex align-items-center" style="cursor: pointer;" onclick="window.playPlaylist(playlistData, {{ forloop.counter0 }})">
+                        <div class="flex-grow-1 d-flex align-items-center" style="cursor: pointer;" onclick="window.playPlaylist({{ playlist.id }}, '{{ playlist.name|escapejs }}', playlistData, {{ forloop.counter0 }})">
                             <i class="fas fa-grip-vertical me-3" style="cursor: move;"></i>
                             {% if item.track.icon %}
                                 <img src="{{ item.track.icon.url }}" alt="{{ item.track.name }}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;" class="me-3">
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
         playAllBtn.addEventListener('click', function(e) {
             e.preventDefault();
             if (playlistData.length > 0) {
-                window.playPlaylist(playlistData, 0);
+                window.playPlaylist({{ playlist.id }}, "{{ playlist.name|escapejs }}", playlistData, 0);
             } else {
                 showToast("This playlist is empty!", "warning");
             }
