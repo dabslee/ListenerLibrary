@@ -5,7 +5,8 @@
 {% block content %}
 <div class="d-flex flex-column flex-grow-1 justify-content-center align-items-center text-center w-100 p-4"
      style="max-width: 100%; margin: 0 auto;">
-    <div class="w-100 mb-4" style="max-width: 400px;">
+
+    <div class="w-100 p-3" style="max-width: 400px;">
         <div class="rounded d-flex flex-column align-items-center justify-content-center w-100"
             style="aspect-ratio: 1 / 1; width: 100%; overflow: hidden; margin: 0 auto;">
             <img id="player-icon" src="" alt="Album artwork"
@@ -26,6 +27,9 @@
     </div>
 
     <div class="w-100" style="max-width: 600px;">
+        <div id="player-playlist-info" class="text-secondary small" style="display: none;">
+            <i class="fas fa-headphones me-1"></i> <span id="player-playlist-name" class="fw-bold"></span>
+        </div>
         <h2 id="player-track-name" class="fw-semibold mb-1">No track selected</h2>
         <p class="text-muted fst-italic mb-4">By: <span id="player-track-artist">No artist</span></p>
 
@@ -37,37 +41,36 @@
             </div>
         </div>
 
-        <div class="d-flex flex-column gap-4 w-100 mt-4">
+        <div class="d-flex flex-column gap-4 w-100 mt-2">
             <div class="d-flex flex-column">
                 <div class="d-flex justify-content-center align-items-center gap-1">
-                    <button id="prev-track-btn" class="btn btn-outline-secondary" type="button" title="Previous track">
+                    <button id="prev-track-btn" class="btn btn-primary" type="button" title="Previous track">
                         <i class="fas fa-step-backward"></i>
                     </button>
-                    <button id="skip-back-btn" class="btn btn-outline-secondary" type="button" title="Skip back 15s">
+                    <button id="skip-back-btn" class="btn btn-primary" type="button" title="Skip back 15s">
                         <i class="fas fa-backward"></i>
                     </button>
                     <button id="play-pause-btn" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center fs-4"
                             type="button" title="Play / Pause" style="width: 64px; height: 64px;">
                         <i class="fas fa-play"></i>
                     </button>
-                    <button id="skip-forward-btn" class="btn btn-outline-secondary" type="button" title="Skip forward 15s">
+                    <button id="skip-forward-btn" class="btn btn-primary" type="button" title="Skip forward 15s">
                         <i class="fas fa-forward"></i>
                     </button>
-                    <button id="next-track-btn" class="btn btn-outline-secondary" type="button" title="Next track">
+                    <button id="next-track-btn" class="btn btn-primary" type="button" title="Next track">
                         <i class="fas fa-step-forward"></i>
                     </button>
                 </div>
                 <div class="align-items-center mt-2">
-                    <button id="shuffle-btn" class="btn btn-outline-secondary" type="button" title="Shuffle">
+                    <button id="shuffle-btn" class="btn btn-secondary" type="button" title="Shuffle">
                         <i class="fas fa-random"></i>
                     </button>
                     <select id="playback-speed"
-                        class="btn btn-outline-secondary"
+                        class="btn btn-secondary"
                         style="
-                            width: auto;
                             height: calc(2.375rem); /* matches .btn height */
+                            padding: 0 0.2rem;
                             line-height: 1.5;
-                            padding: 0 0.75rem;
                             text-align: center;
                             appearance: none;
                         ">
