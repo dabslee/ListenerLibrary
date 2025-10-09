@@ -30,11 +30,27 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'playlist_list' %}">Playlists</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'profile' %}">Profile</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user"></i> {{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{% url 'password_reset' %}">Reset password</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="px-2">
+                                    <div class="form-group">
+                                        <label for="theme-select">Theme</label>
+                                        <select class="form-control" id="theme-select">
+                                            <option value="light">Light</option>
+                                            <option value="dark">Dark</option>
+                                            <option value="light-blue">Light blue</option>
+                                            <option value="dark-blue">Dark blue</option>
+                                        </select>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
+                            </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
