@@ -51,42 +51,40 @@
     </main>
 
     <footer class="fixed-bottom bg-light border-top py-2">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-3">
-                    <div class="d-flex align-items-center">
-                        <img id="player-icon" src="" class="me-2" style="width: 40px; height: 40px; display: none; border-radius: 4px;">
+        <div class="row align-items-center py-3 px-5">
+            <div class="d-flex flex-md-row flex-column align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center col-md-4">
+                    <img id="player-icon" src="" class="me-2" style="width: 40px; height: 40px; display: none; border-radius: 4px;">
+                    <div>
                         <span id="player-track-name" class="fw-bold">No track selected</span>
+                        <br>
+                        <span id="player-track-artist" class="text-muted fst-italic">No artist</span>
                     </div>
                 </div>
-                <div class="col-md-6 d-flex align-items-center">
-                    <div class="player-buttons-group">
-                        <button id="prev-track-btn" class="btn btn-secondary btn-sm"><i class="fas fa-step-backward"></i></button>
-                        <button id="skip-back-btn" class="btn btn-secondary btn-sm"><i class="fas fa-backward"></i></button>
-                        <button id="play-pause-btn" class="btn btn-primary btn-sm mx-2"><i class="fas fa-play"></i></button>
-                        <button id="skip-forward-btn" class="btn btn-secondary btn-sm"><i class="fas fa-forward"></i></button>
-                        <button id="next-track-btn" class="btn btn-secondary btn-sm"><i class="fas fa-step-forward"></i></button>
-                        <button id="shuffle-btn" class="btn btn-secondary btn-sm ms-3"><i class="fas fa-random"></i></button>
-                    </div>
-                    <div class="seek-bar-group">
-                        <span id="current-time">0:00</span>
-                        <input type="range" id="seek-bar" class="form-range mx-2" value="0">
-                        <span id="duration">0:00</span>
-                    </div>
-                     <div class="ms-3">
-                        <select id="playback-speed" class="form-select form-select-sm" style="width: auto;">
-                            <option value="0.5">0.5x</option>
-                            <option value="0.75">0.75x</option>
-                            <option value="0.9">0.9x</option>
-                            <option value="1" selected>1x</option>
-                            <option value="1.1">1.1x</option>
-                            <option value="1.25">1.25x</option>
-                            <option value="1.5">1.5x</option>
-                            <option value="2">2x</option>
-                        </select>
-                    </div>
-                    <audio id="audio-player" class="d-none"></audio>
+                <div class="player-buttons-group d-flex align-items-center gap-1">
+                    <button id="prev-track-btn" class="btn btn-secondary btn-sm"><i class="fas fa-step-backward"></i></button>
+                    <button id="skip-back-btn" class="btn btn-secondary btn-sm"><i class="fas fa-backward"></i></button>
+                    <button id="play-pause-btn" class="btn btn-primary btn-sm"><i class="fas fa-play"></i></button>
+                    <button id="skip-forward-btn" class="btn btn-secondary btn-sm"><i class="fas fa-forward"></i></button>
+                    <button id="next-track-btn" class="btn btn-secondary btn-sm"><i class="fas fa-step-forward"></i></button>
+                    <button id="shuffle-btn" class="btn btn-secondary btn-sm"><i class="fas fa-random"></i></button>
+                    <select id="playback-speed" class="form-select form-select-sm" style="width: auto;">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="0.9">0.9x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.1">1.1x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
                 </div>
+                <div class="seek-bar-group d-flex align-items-center gap-1 flex-grow-1">
+                    <span id="current-time">0:00</span>
+                    <input type="range" id="seek-bar" class="form-range mx-2" value="0">
+                    <span id="duration">0:00</span>
+                </div>
+                <audio id="audio-player" class="d-none"></audio>
             </div>
         </div>
     </footer>
@@ -100,6 +98,7 @@
     {
         "trackId": {{ playback_state.track.id }},
         "trackName": "{{ playback_state.track.name|escapejs }}",
+        "trackArtist": "{% if playback_state.track.artist %}{{ playback_state.track.artist|escapejs }}{% else %}No artist{% endif %}",
         "trackIcon": "{% if playback_state.track.icon %}{{ playback_state.track.icon.url }}{% else %}{% endif %}",
         "trackStreamUrl": "{% url 'stream_track' playback_state.track.id %}",
         "position": {{ playback_state.last_played_position }},

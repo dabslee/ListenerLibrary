@@ -66,6 +66,7 @@ let playlistData = [
     {
         id: {{ item.track.id }},
         name: "{{ item.track.name|escapejs }}",
+        artist: "{{ item.track.artist|escapejs }}",
         stream_url: "{% url 'stream_track' item.track.id %}",
         icon_url: {% if item.track.icon %}"{{ item.track.icon.url }}"{% else %}null{% endif %},
         type: "{{ item.track.type }}"
