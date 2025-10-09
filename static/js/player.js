@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function loadAndPlayTrack(track, startPosition = 0) {
+    function loadAndPlayTrack(track) {
         if (!track) return;
         if (currentTrack && !audioPlayer.paused) savePlaybackState();
 
@@ -176,13 +176,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         updateMediaSession();
 
-        const finalStartPosition = (track.type === 'podcast' && podcastPositions[track.id]) ? podcastPositions[track.id] : startPosition;
+        let startPosition = 0;
+        if (track.type === 'podcast') {
+            startPosition = track.position || podcastPositions[track.id] || 0;
+            podcastPositions[track.id] = startPosition;
+        }
+
         audioPlayer.src = track.stream_url;
         audioPlayer.load();
 
         audioPlayer.addEventListener('loadedmetadata', () => {
             if (isFinite(audioPlayer.duration)) {
-                audioPlayer.currentTime = finalStartPosition;
+                audioPlayer.currentTime = startPosition;
             }
         }, { once: true });
 
@@ -206,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- GLOBAL FUNCTIONS ---
-    window.playTrack = function(trackUrl, trackName, trackArtist, iconUrl, trackId, trackType) {
+    window.playTrack = function(trackUrl, trackName, trackArtist, iconUrl, trackId, trackType, position = 0) {
         currentPlaylist = null;
         playQueue = [];
         originalPlaylist = [];
@@ -221,7 +226,8 @@ document.addEventListener('DOMContentLoaded', function() {
             artist: trackArtist,
             icon_url: iconUrl,
             stream_url: trackUrl,
-            type: trackType
+            type: trackType,
+            position: position
         };
         loadAndPlayTrack(trackObject);
     };
@@ -360,7 +366,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 artist: state.trackArtist,
                 icon_url: state.trackIcon,
                 stream_url: state.trackStreamUrl,
-                type: state.trackType
+                type: state.trackType,
+                position: state.position
             };
             isShuffle = state.shuffle;
             currentPlaylist = state.playlist;
@@ -373,9 +380,9 @@ document.addEventListener('DOMContentLoaded', function() {
             updateMediaSession();
 
             audioPlayer.src = currentTrack.stream_url;
-            const startPosition = (currentTrack.type === 'podcast' && podcastPositions[currentTrack.id])
-                ? podcastPositions[currentTrack.id]
-                : state.position;
+            const startPosition = (currentTrack.type === 'podcast' && currentTrack.position)
+                ? currentTrack.position
+                : 0;
 
             audioPlayer.addEventListener('loadedmetadata', () => {
                 if (isFinite(audioPlayer.duration)) {
@@ -393,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!response.ok) throw new Error('Failed to fetch playlist');
                     const tracks = await response.json();
 
-                    originalPlaylist = tracks.map(t => ({...t, stream_url: t.url, icon_url: t.icon}));
+                    originalPlaylist = tracks;
                     shuffledPlaylist = shuffleArray(originalPlaylist);
                     playQueue = isShuffle ? shuffledPlaylist : originalPlaylist;
                     currentTrackIndex = playQueue.findIndex(t => t.id === currentTrack.id);
