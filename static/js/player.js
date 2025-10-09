@@ -13,12 +13,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // State variables
     let currentTrackId = null;
+    let currentTrackType = null;
     let saveInterval = null;
     let podcastPositions = {};
 
     // --- UTILITY FUNCTIONS ---
 
-    // Function to get CSRF token from cookies
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const csrftoken = getCookie('csrftoken');
 
-    // Function to format time from seconds to MM:SS
     function formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) return "0:00";
         const minutes = Math.floor(seconds / 60);
@@ -46,12 +45,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- PLAYBACK STATE MANAGEMENT ---
 
     async function savePlaybackState() {
-        if (!currentTrackId || isNaN(audioPlayer.currentTime) || audioPlayer.currentTime === 0) {
-            return; // Don't save if nothing is playing or at the very start
+        if (!currentTrackId || isNaN(audioPlayer.currentTime)) {
+            return;
+        }
+
+        const position = audioPlayer.currentTime;
+
+        // Optimistically update local state for instant feedback
+        if (currentTrackType === 'podcast') {
+            podcastPositions[currentTrackId] = position;
         }
 
         try {
-            await fetch('/api/update_playback_state/', {
+            const response = await fetch('/api/update_playback_state/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -59,9 +65,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     track_id: currentTrackId,
-                    position: audioPlayer.currentTime
+                    position: position
                 })
             });
+            if (!response.ok) {
+                console.error('Failed to save playback state to the server.');
+            }
         } catch (error) {
             console.error('Error saving playback state:', error);
         }
@@ -81,29 +90,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
     audioPlayer.addEventListener('play', () => {
         playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-        // Start saving progress every 5 seconds
         if (saveInterval) clearInterval(saveInterval);
         saveInterval = setInterval(savePlaybackState, 5000);
     });
 
     audioPlayer.addEventListener('pause', () => {
         playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-        // Stop saving progress when paused, but save the final state
         clearInterval(saveInterval);
-        savePlaybackState();
+        savePlaybackState(); // Save final state on pause
     });
 
     audioPlayer.addEventListener('ended', () => {
         clearInterval(saveInterval);
-        // Set position to 0 for the ended track
+        // When a track ends, its progress should be reset to 0 for the next play.
+        if (currentTrackType === 'podcast') {
+            podcastPositions[currentTrackId] = 0;
+            // Also update the UI immediately
+            updatePodcastProgressBar(currentTrackId, 0, audioPlayer.duration);
+        }
         audioPlayer.currentTime = 0;
         savePlaybackState();
     });
 
+    function updatePodcastProgressBar(trackId, currentTime, duration) {
+        const trackListItem = document.querySelector(`[data-testid="track-item-${trackId}"]`);
+        if (trackListItem) {
+            const progressBar = trackListItem.querySelector('.progress-bar');
+            if (progressBar) {
+                const percentage = (duration > 0) ? (currentTime / duration) * 100 : 0;
+                progressBar.style.width = `${percentage}%`;
+                progressBar.setAttribute('aria-valuenow', percentage);
+            }
+        }
+    }
+
     audioPlayer.addEventListener('timeupdate', () => {
-        if (audioPlayer.duration) {
-            seekBar.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-            currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+        if (!audioPlayer.duration) return;
+
+        const currentTime = audioPlayer.currentTime;
+        const duration = audioPlayer.duration;
+
+        seekBar.value = (currentTime / duration) * 100;
+        currentTimeEl.textContent = formatTime(currentTime);
+
+        // Real-time update for podcast progress bar in the list
+        if (currentTrackType === 'podcast' && currentTrackId) {
+            updatePodcastProgressBar(currentTrackId, currentTime, duration);
         }
     });
 
@@ -120,35 +152,51 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- GLOBAL FUNCTIONS AND INITIALIZATION ---
 
     window.playTrack = function(trackUrl, trackName, iconUrl, trackId, trackType) {
-        currentTrackId = trackId;
+        // Save state of the *previous* track before switching
+        if (currentTrackId && !audioPlayer.paused) {
+            savePlaybackState();
+        }
 
-        // Stop any previous save interval
+        currentTrackId = trackId;
+        currentTrackType = trackType;
+
         if (saveInterval) clearInterval(saveInterval);
 
         audioPlayer.src = trackUrl;
         playerTrackName.textContent = trackName;
-        playerIcon.src = (iconUrl && iconUrl !== 'None') ? iconUrl : '';
-        playerIcon.style.display = (iconUrl && iconUrl !== 'None') ? 'inline-block' : 'none';
+        playerIcon.src = (iconUrl && iconUrl !== 'None' && iconUrl !== 'null') ? iconUrl : '';
+        playerIcon.style.display = (iconUrl && iconUrl !== 'None' && iconUrl !== 'null') ? 'inline-block' : 'none';
 
-        // Check for podcast-specific progress
-        const startPosition = (trackType === 'podcast' && podcastPositions[trackId]) ? podcastPositions[trackId] : 0;
+        const startPosition = (trackType === 'podcast' && podcastPositions[trackId])
+            ? podcastPositions[trackId]
+            : 0;
 
-        // We must wait for metadata to load before setting currentTime
-        audioPlayer.addEventListener('loadedmetadata', () => {
-            audioPlayer.currentTime = startPosition;
-        }, { once: true }); // Use { once: true } so this listener is removed after firing
+        const setTimeAndPlay = () => {
+            // Ensure we don't try to set time on an invalid duration
+            if (isFinite(audioPlayer.duration)) {
+                audioPlayer.currentTime = startPosition;
+            }
+            audioPlayer.play().catch(e => console.error("Playback error:", e));
+        };
 
-        audioPlayer.play().catch(e => console.error("Playback error:", e));
+        // The 'canplay' event is more reliable for this, as it fires
+        // when the browser has enough data to begin playback.
+        audioPlayer.addEventListener('canplay', setTimeAndPlay, { once: true });
+        audioPlayer.load(); // Force browser to load the new (or same) src
     };
 
     function initializePlayer() {
-        // Load podcast progress map
+        // Load podcast progress map from the template
         const podcastDataEl = document.getElementById('podcast-positions-data');
         if (podcastDataEl) {
-            podcastPositions = JSON.parse(podcastDataEl.textContent);
+            try {
+                podcastPositions = JSON.parse(podcastDataEl.textContent);
+            } catch (e) {
+                console.error("Could not parse podcast positions data:", e);
+            }
         }
 
-        // Load last general playback state
+        // Load last general playback state from the template
         const playbackStateEl = document.getElementById('playback-state-data');
         const playbackStateText = playbackStateEl.textContent.trim();
 
@@ -156,16 +204,24 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const state = JSON.parse(playbackStateText);
                 currentTrackId = state.trackId;
+                currentTrackType = state.trackType;
                 audioPlayer.src = state.trackStreamUrl;
                 playerTrackName.textContent = state.trackName;
-                playerIcon.src = (state.trackIcon && state.trackIcon !== 'None') ? state.trackIcon : '';
-                playerIcon.style.display = (state.trackIcon && state.trackIcon !== 'None') ? 'inline-block' : 'none';
+                playerIcon.src = (state.trackIcon && state.trackIcon !== 'None' && state.trackIcon !== 'null') ? state.trackIcon : '';
+                playerIcon.style.display = (state.trackIcon && state.trackIcon !== 'None' && state.trackIcon !== 'null') ? 'inline-block' : 'none';
 
-                // Wait for metadata to load before setting the time
+                // Prioritize podcast-specific progress for the initial load
+                const startPosition = (state.trackType === 'podcast' && podcastPositions[state.trackId])
+                    ? podcastPositions[state.trackId]
+                    : state.position;
+
                 audioPlayer.addEventListener('loadedmetadata', () => {
-                    audioPlayer.currentTime = state.position;
-                    // Update time display manually since it's not playing
-                    currentTimeEl.textContent = formatTime(state.position);
+                    if (isFinite(audioPlayer.duration)) {
+                        audioPlayer.currentTime = startPosition;
+                        currentTimeEl.textContent = formatTime(startPosition);
+                        durationEl.textContent = formatTime(audioPlayer.duration);
+                        seekBar.value = (audioPlayer.duration > 0) ? (startPosition / audioPlayer.duration) * 100 : 0;
+                    }
                 }, { once: true });
 
             } catch (e) {
@@ -177,10 +233,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Save state when the user is about to leave the page
     window.addEventListener('beforeunload', savePlaybackState);
 
-    // Initialize the player on page load
     initializePlayer();
 
-    // --- Standard player controls (skip, speed, error handling) ---
+    // --- Standard player controls ---
 
     skipBackBtn.addEventListener('click', () => {
         if (audioPlayer.src && audioPlayer.readyState > 0) audioPlayer.currentTime = Math.max(0, audioPlayer.currentTime - 15);
