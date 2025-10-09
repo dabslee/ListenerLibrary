@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load player_extras %}
 
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -28,7 +29,8 @@
                 {% for item in playlist_items %}
                     <li class="list-group-item d-flex justify-content-between align-items-center"
                         data-track-id="{{ item.track.id }}"
-                        id="playlist-item-{{ item.track.id }}">
+                        id="playlist-item-{{ item.track.id }}"
+                        data-testid="track-item-{{ item.track.id }}">
                         <div class="flex-grow-1 d-flex align-items-center" style="cursor: pointer;" onclick="window.playPlaylist(playlistData, {{ forloop.counter0 }})">
                             <i class="fas fa-grip-vertical me-3" style="cursor: move;"></i>
                             {% if item.track.icon %}
@@ -39,16 +41,31 @@
                                 </div>
                             {% endif %}
                             <div>
-                                <h6 class="mb-0">{{ item.track.name }}</h6>
+                                <h6 class="mb-0">
+                                    {{ item.track.name }}
+                                    {% if item.track.get_type_display == 'Podcast' %} <i class="fas fa-book ms-2 text-secondary"></i> {% endif %}
+                                </h6>
                                 {% if item.track.artist %}
                                     <small class="text-muted">By {{ item.track.artist }}</small>
                                 {% endif %}
                             </div>
                         </div>
-                        <div>
-                            <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})">
-                                <i class="fas fa-xmark"></i>
-                            </button>
+                        <div class="d-flex flex-column align-items-end" style="min-width: 150px;">
+                             <div class="mb-2">
+                                <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})" title="Remove from Playlist">
+                                    <i class="fas fa-xmark"></i>
+                                </button>
+                            </div>
+                            {% if item.track.type == 'podcast' %}
+                                <div class="w-100">
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar" role="progressbar" style="width: {{ item.track.progress_percentage|default:0 }}%;" aria-valuenow="{{ item.track.progress_percentage|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-end">
+                                        <small class="text-muted podcast-progress-time">{{ item.track.position|format_duration }} / {{ item.track.duration|format_duration }}</small>
+                                    </div>
+                                </div>
+                            {% endif %}
                         </div>
                     </li>
                 {% empty %}

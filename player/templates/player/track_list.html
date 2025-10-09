@@ -13,17 +13,17 @@
 
     <div class="card bg-light mb-4">
         <div class="card-body">
-            <form method="get" action="{% url 'track_list' %}" id="filter-sort-form">
+            <form id="filter-sort-form" onsubmit="return false;">
                 <div class="row g-3 align-items-end">
                     <!-- Search -->
                     <div class="col-md-4">
                         <label for="search-input" class="form-label">Search</label>
-                        <input type="text" name="search" id="search-input" class="form-control" value="{{ search_query|default:'' }}" placeholder="Keyword...">
+                        <input type="text" id="search-input" class="form-control" value="{{ search_query|default:'' }}" placeholder="Keyword...">
                     </div>
                     <!-- Filter by Artist -->
                     <div class="col-md-3">
                         <label for="artist-filter" class="form-label">Artist</label>
-                        <select name="artist" id="artist-filter" class="form-select">
+                        <select id="artist-filter" class="form-select">
                             <option value="">All Artists</option>
                             {% for artist in artists %}
                                 {% if artist %}
@@ -35,7 +35,7 @@
                     <!-- Filter by Playlist -->
                     <div class="col-md-3">
                         <label for="playlist-filter" class="form-label">Playlist</label>
-                        <select name="playlist" id="playlist-filter" class="form-select">
+                        <select id="playlist-filter" class="form-select">
                             <option value="">All Tracks</option>
                             {% for p in playlists %}
                                 <option value="{{ p.id }}" {% if p.id == selected_playlist_id %}selected{% endif %}>{{ p.name }}</option>
@@ -45,27 +45,25 @@
                     <!-- Sort by -->
                     <div class="col-md-2">
                         <label for="sort-select" class="form-label">Sort By</label>
-                        <select name="sort" id="sort-select" class="form-select">
+                        <select id="sort-select" class="form-select">
                             <option value="name" {% if sort_option == 'name' %}selected{% endif %}>Alphabetical</option>
                             <option value="last_played" {% if sort_option == 'last_played' %}selected{% endif %}>Last Played</option>
                         </select>
-                    </div>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <button type="submit" class="btn btn-primary">Apply</button>
-                        <a href="{% url 'track_list' %}" class="btn btn-secondary">Reset</a>
                     </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="list-group">
+    <div class="list-group" id="track-list-container">
         {% for track in tracks %}
-            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center track-item"
                  style="cursor: pointer;"
-                 data-testid="track-item-{{ track.id }}">
+                 data-testid="track-item-{{ track.id }}"
+                 data-name="{{ track.name|lower }}"
+                 data-artist="{{ track.artist|lower|default:'' }}"
+                 data-last-played="{{ track.last_played_iso|default:'' }}"
+                 data-playlists="{% for p in track.playlists.all %}{{ p.id }},{% endfor %}">
                 <div class="flex-grow-1" onclick="playTrack('{% url 'stream_track' track.id %}', '{{ track.name|escapejs }}', '{{ track.artist|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}', {{ track.id }}, '{{ track.type }}');">
                     <div class="d-flex align-items-center">
                         {% if track.icon %}
@@ -131,9 +129,79 @@
 
 {% block extra_js %}
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-input');
+    const artistFilter = document.getElementById('artist-filter');
+    const playlistFilter = document.getElementById('playlist-filter');
+    const sortSelect = document.getElementById('sort-select');
+    const trackListContainer = document.getElementById('track-list-container');
+    const allTracks = Array.from(trackListContainer.querySelectorAll('.track-item'));
+    const noResultsMessage = document.querySelector('.alert-info');
+
+    function filterAndSortTracks() {
+        const searchQuery = searchInput.value.toLowerCase().trim();
+        const selectedArtist = artistFilter.value.toLowerCase();
+        const selectedPlaylistId = playlistFilter.value;
+        const sortOption = sortSelect.value;
+
+        let visibleTracks = [];
+
+        allTracks.forEach(track => {
+            const trackName = track.dataset.name;
+            const trackArtist = track.dataset.artist;
+            const trackPlaylists = track.dataset.playlists.split(',').filter(Boolean);
+
+            const searchMatch = !searchQuery || trackName.includes(searchQuery) || trackArtist.includes(searchQuery);
+            const artistMatch = !selectedArtist || trackArtist === selectedArtist;
+            const playlistMatch = !selectedPlaylistId || trackPlaylists.includes(selectedPlaylistId);
+
+            if (searchMatch && artistMatch && playlistMatch) {
+                track.classList.remove('d-none');
+                visibleTracks.push(track);
+            } else {
+                track.classList.add('d-none');
+            }
+        });
+
+        // Sort the visible tracks
+        visibleTracks.sort((a, b) => {
+            if (sortOption === 'name') {
+                return a.dataset.name.localeCompare(b.dataset.name);
+            } else if (sortOption === 'last_played') {
+                const dateA = a.dataset.lastPlayed ? new Date(a.dataset.lastPlayed) : null;
+                const dateB = b.dataset.lastPlayed ? new Date(b.dataset.lastPlayed) : null;
+
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1; // Unplayed tracks go to the end
+                if (!dateB) return -1; // Played tracks come first
+                return dateB - dateA; // Sort descending
+            }
+            return 0;
+        });
+
+        // Re-append sorted tracks to the container
+        visibleTracks.forEach(track => trackListContainer.appendChild(track));
+
+        // Show/hide the "no results" message
+        if (noResultsMessage) {
+            noResultsMessage.style.display = visibleTracks.length > 0 ? 'none' : 'block';
+        }
+    }
+
+    // Attach event listeners
+    searchInput.addEventListener('input', filterAndSortTracks);
+    artistFilter.addEventListener('change', filterAndSortTracks);
+    playlistFilter.addEventListener('change', filterAndSortTracks);
+    sortSelect.addEventListener('change', filterAndSortTracks);
+
+    // Initial filter on page load to respect any pre-filled values from URL params
+    filterAndSortTracks();
+});
+
 function addToPlaylist(trackId, playlistId) {
     const url = "{% url 'add_track_to_playlist' %}";
-    const csrfToken = '{{ csrf_token }}';
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}';
+
 
     const formData = new FormData();
     formData.append('track_id', trackId);
