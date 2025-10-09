@@ -16,3 +16,6 @@ Tracks List:
 
 Playlist view:
 ![playlist_detail](screenshots/playlist_detail.png)
+
+Focused view:
+![focused](screenshots/focused.png)
