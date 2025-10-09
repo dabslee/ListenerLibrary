@@ -3,6 +3,9 @@ body {
     background-color: #f8f9fa;
     color: #212529;
 }
+.form-control::placeholder {
+    color: gray;
+}
 
 /* --- Dark Theme --- */
 html[data-theme="dark"] body {
@@ -33,20 +36,20 @@ html[data-theme="dark"] .navbar {
 
 /* --- Light Blue Theme --- */
 html[data-theme="light-blue"] body {
-    background-color: #e3f2fd;
-    color: #0d47a1;
+    background-color: #c4e2fa;
+    color: #1f242d;
 }
 html[data-theme="light-blue"] .card,
 html[data-theme="light-blue"] .list-group-item,
 html[data-theme="light-blue"] footer.fixed-bottom,
 html[data-theme="light-blue"] .alert-info {
-    background-color: #bbdefb !important;
+    background-color: #e3f2fd !important;
     border-color: #90caf9 !important;
     color: #0d47a1;
 }
 html[data-theme="light-blue"] .form-control,
 html[data-theme="light-blue"] .form-select {
-    background-color: #bbdefb;
+    background-color: #d8ebf9;
     color: #0d47a1;
     border-color: #90caf9;
 }
@@ -183,5 +186,5 @@ html[data-theme="dark-blue"] .btn-outline-secondary:hover { background-color: #7
 
 /* --- Progress Bar --- */
 html[data-theme="dark"] .progress { background-color: #495057; }
-html[data-theme="light-blue"] .progress { background-color: #90caf9; }
+html[data-theme="light-blue"] .progress { background-color: #afd6f6; }
 html[data-theme="dark-blue"] .progress { background-color: #415a77; }
