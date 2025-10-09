@@ -186,10 +186,14 @@ document.addEventListener('DOMContentLoaded', function() {
         audioPlayer.load();
 
         audioPlayer.addEventListener('canplay', () => {
-            if (isFinite(audioPlayer.duration)) {
-                audioPlayer.currentTime = startPosition;
+            const playPromise = audioPlayer.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    if (isFinite(audioPlayer.duration) && startPosition > 0) {
+                        audioPlayer.currentTime = startPosition;
+                    }
+                }).catch(e => console.error("Playback error:", e));
             }
-            audioPlayer.play().catch(e => console.error("Playback error:", e));
         }, { once: true });
     }
 
@@ -304,6 +308,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    audioPlayer.addEventListener('loadedmetadata', () => {
+        if (isFinite(audioPlayer.duration)) {
+            durationEl.textContent = formatTime(audioPlayer.duration);
+        }
+    });
 
     seekBar.addEventListener('input', () => {
         if (audioPlayer.duration) {
@@ -378,14 +387,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? currentTrack.position
                 : 0;
 
-            audioPlayer.addEventListener('canplay', () => {
+            audioPlayer.addEventListener('loadedmetadata', () => {
                 if (isFinite(audioPlayer.duration)) {
-                    audioPlayer.currentTime = startPosition;
                     currentTimeEl.textContent = formatTime(startPosition);
                     durationEl.textContent = formatTime(audioPlayer.duration);
                     seekBar.value = (audioPlayer.duration > 0) ? (startPosition / audioPlayer.duration) * 100 : 0;
                 }
-                audioPlayer.play().catch(e => console.error("Playback error:", e));
+            });
+
+            audioPlayer.addEventListener('canplay', () => {
+                const playPromise = audioPlayer.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        if (isFinite(audioPlayer.duration) && startPosition > 0) {
+                            audioPlayer.currentTime = startPosition;
+                        }
+                    }).catch(error => {
+                        console.error("Autoplay was prevented. User must initiate playback.", error);
+                        if (isFinite(audioPlayer.duration) && startPosition > 0) {
+                           audioPlayer.currentTime = startPosition;
+                        }
+                    });
+                }
             }, { once: true });
             audioPlayer.load();
 
