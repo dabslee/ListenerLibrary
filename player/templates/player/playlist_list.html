@@ -3,7 +3,7 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Your Playlists</h2>
-        <a href="{% url 'create_playlist' %}" class="btn btn-primary">Create New Playlist</a>
+        <a href="{% url 'create_playlist' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Create New Playlist</a>
     </div>
 
     <div class="list-group">
@@ -29,9 +29,9 @@
 
                 <div class="d-flex">
                     <a href="{% url 'edit_playlist' playlist.id %}"
-                    class="btn btn-outline-primary btn-sm me-2">Edit</a>
+                    class="btn btn-outline-primary btn-sm me-2"><i class="fas fa-pen"></i></a>
                     <a href="{% url 'delete_playlist' playlist.id %}"
-                    class="btn btn-outline-danger btn-sm">Delete</a>
+                    class="btn btn-outline-danger btn-sm"><i class="fas fa-trash"></i></a>
                 </div>
             </div>
         {% empty %}

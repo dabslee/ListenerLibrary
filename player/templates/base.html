@@ -25,7 +25,10 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'track_list' %}">Library</a>
+                            <a class="nav-link" href="{% url 'track_list' %}">Tracks</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'playlist_list' %}">Playlists</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'profile' %}">Profile</a>
