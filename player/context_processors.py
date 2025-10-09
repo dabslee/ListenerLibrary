@@ -20,6 +20,6 @@ def playback_context(request):
     # Get all podcast-specific progress points
     podcast_progress_list = PodcastProgress.objects.filter(user=request.user)
     podcast_positions_map = {p.track_id: p.position for p in podcast_progress_list}
-    context['podcast_positions_json'] = json.dumps(podcast_positions_map)
+    context['podcast_positions_json'] = podcast_positions_map
 
     return context

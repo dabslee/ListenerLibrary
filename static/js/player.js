@@ -191,6 +191,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (podcastDataEl) {
             try {
                 podcastPositions = JSON.parse(podcastDataEl.textContent);
+                podcastPositions = Object.fromEntries(
+                    Object.entries(podcastPositions).map(([k, v]) => [Number(k), v])
+                );
             } catch (e) {
                 console.error("Could not parse podcast positions data:", e);
             }
