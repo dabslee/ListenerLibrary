@@ -1,9 +1,4 @@
 Features to implement:
-- Adding "artist" field to tracks
-- Playback memory
-    - Keep track of what track and where in the track a user is at at any given time; when the user navigates away from the site or goes to a new page, start them at that point in that track
-    - For tracks with type "podcast", further track for each individual podcast track where the user last left off. If the user plays a different track and then comes back to play the podcast track, start them at the point they last left off in the podcast track.
-    - Show in the track list view how far in each podcast track the user last left off with a visual progress bar indicator.
 - Grouping tracks into ordered playlists
     - Playing playlists instead of individual tracks, where the player automatically goes to the next track after finishing one
     - Buttons to go to next track or previous track

@@ -8,7 +8,7 @@
         </div>
         <div>
             <button id="play-all-btn" class="btn btn-success">Play All</button>
-            <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary">Edit Playlist</a>
+            <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary">Edit Playlist Details</a>
         </div>
     </div>
 
@@ -47,7 +47,7 @@
                         </div>
                         <div>
                             <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})">
-                                <i class="fas fa-trash"></i>
+                                <i class="fas fa-xmark"></i>
                             </button>
                         </div>
                     </li>
