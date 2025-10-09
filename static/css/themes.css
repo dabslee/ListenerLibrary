@@ -193,3 +193,8 @@ html[data-theme="dark-blue"] .progress { background-color: #415a77; }
 html[data-theme="dark"] .form-range::-webkit-slider-runnable-track { background: #495057; }
 html[data-theme="light-blue"] .form-range::-webkit-slider-runnable-track { background: #afd6f6; }
 html[data-theme="dark-blue"] .form-range::-webkit-slider-runnable-track { background: #415a77; }
+
+/* --- Shuffle button active state --- */
+html[data-theme="dark"] #shuffle-btn.active { color: white }
+html[data-theme="light-blue"] #shuffle-btn.active { color: white; background-color: #0d47a1; }
+html[data-theme="dark-blue"] #shuffle-btn.active { color: white; background-color: #778da9; }
