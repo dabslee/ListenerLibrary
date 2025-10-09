@@ -32,14 +32,12 @@
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-user"></i> {{ user.username }}
+                                {{ user.username }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                <li><a class="dropdown-item" href="{% url 'password_reset' %}">Reset password</a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li class="px-2">
                                     <div class="form-group">
-                                        <label for="theme-select">Theme</label>
+                                        <small class="text-secondary ps-1">Theme</small>
                                         <select class="form-control" id="theme-select">
                                             <option value="light">Light</option>
                                             <option value="dark">Dark</option>
@@ -49,6 +47,7 @@
                                     </div>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'password_reset' %}">Reset password</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
                             </ul>
                         </li>
