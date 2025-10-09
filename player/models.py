@@ -23,6 +23,8 @@ class UserPlaybackState(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     track = models.ForeignKey(Track, on_delete=models.SET_NULL, null=True, blank=True)
     last_played_position = models.FloatField(default=0)
+    shuffle = models.BooleanField(default=False)
+    playlist = models.ForeignKey('Playlist', on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username}'s Playback State"
