@@ -101,3 +101,21 @@ class PlayerTestCase(TestCase):
         expected_filename = os.path.basename(self.track.file.name)
         self.assertEqual(response.get('Content-Disposition'), f'attachment; filename="{expected_filename}"')
         self.assertEqual(b"".join(response.streaming_content), self.track_content)
+
+    def test_stream_track_view(self):
+        # Test a normal request (no range header)
+        response = self.client.get(reverse('stream_track', args=[self.track.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get('Content-Length'), str(len(self.track_content)))
+        self.assertEqual(b"".join(response.streaming_content), self.track_content)
+        self.assertEqual(response.get('Accept-Ranges'), 'bytes')
+
+        # Test a request with a range header
+        range_header = 'bytes=6-10' # Request bytes 6, 7, 8, 9, 10
+        response = self.client.get(reverse('stream_track', args=[self.track.id]), HTTP_RANGE=range_header)
+        self.assertEqual(response.status_code, 206)
+
+        expected_content = self.track_content[6:11]
+        self.assertEqual(response.get('Content-Length'), str(len(expected_content)))
+        self.assertEqual(response.get('Content-Range'), f'bytes 6-10/{len(self.track_content)}')
+        self.assertEqual(b"".join(response.streaming_content), expected_content)
