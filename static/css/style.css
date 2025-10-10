@@ -17,6 +17,11 @@ footer.fixed-bottom .container .row {
     text-align: right;
 }
 
+/* Disabled buttons */
+button:disabled {
+    opacity: 0.3 !important;
+}
+
 /* --- Mobile Friendliness --- */
 @media (max-width: 767.98px) {
     .body-padded {
