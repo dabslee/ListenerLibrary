@@ -23,7 +23,15 @@ button:disabled {
 }
 
 .timer-paused {
-    opacity: 0.5;
+    opacity: 0.6;
+    font-style: italic;
+}
+
+#sleep-timer-display {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
 }
 
 /* --- Mobile Friendliness --- */

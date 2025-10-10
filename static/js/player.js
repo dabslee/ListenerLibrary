@@ -111,6 +111,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         isSleepTimerPaused = false;
         sleepTimerEndTime = Date.now() + minutes * 60 * 1000;
+        localStorage.setItem('sleepTimerEndTime', sleepTimerEndTime);
+        localStorage.removeItem('isSleepTimerPaused');
+        localStorage.removeItem('sleepTimerRemainingPausedTime');
+
         sleepTimerInterval = setInterval(updateTimerDisplay, 1000);
 
         updateTimerDisplay();
@@ -120,6 +124,11 @@ document.addEventListener('DOMContentLoaded', function() {
         sleepTimerNavDisplay.classList.remove('d-none', 'timer-paused');
         pauseResumeSleepTimerBtn.textContent = 'Pause';
         showToast(`Sleep timer set for ${minutes} minutes.`);
+
+        const modalInstance = bootstrap.Modal.getInstance(sleepTimerModal);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
     }
 
     function cancelTimer(closeModal = true) {
@@ -128,6 +137,10 @@ document.addEventListener('DOMContentLoaded', function() {
         sleepTimerEndTime = null;
         isSleepTimerPaused = false;
         sleepTimerRemainingPausedTime = 0;
+
+        localStorage.removeItem('sleepTimerEndTime');
+        localStorage.removeItem('isSleepTimerPaused');
+        localStorage.removeItem('sleepTimerRemainingPausedTime');
 
         setupTimerView.style.display = 'block';
         activeTimerView.style.display = 'none';
@@ -148,16 +161,30 @@ document.addEventListener('DOMContentLoaded', function() {
             // Pause the timer
             if (sleepTimerInterval) clearInterval(sleepTimerInterval);
             sleepTimerRemainingPausedTime = sleepTimerEndTime - Date.now();
+
+            localStorage.setItem('isSleepTimerPaused', 'true');
+            localStorage.setItem('sleepTimerRemainingPausedTime', sleepTimerRemainingPausedTime);
+
             pauseResumeSleepTimerBtn.textContent = 'Resume';
             sleepTimerNavDisplay.classList.add('timer-paused');
             showToast("Sleep timer paused.");
         } else {
             // Resume the timer
             sleepTimerEndTime = Date.now() + sleepTimerRemainingPausedTime;
+
+            localStorage.setItem('sleepTimerEndTime', sleepTimerEndTime);
+            localStorage.removeItem('isSleepTimerPaused');
+            localStorage.removeItem('sleepTimerRemainingPausedTime');
+
             sleepTimerInterval = setInterval(updateTimerDisplay, 1000);
             pauseResumeSleepTimerBtn.textContent = 'Pause';
             sleepTimerNavDisplay.classList.remove('timer-paused');
             showToast("Sleep timer resumed.");
+        }
+
+        const modalInstance = bootstrap.Modal.getInstance(sleepTimerModal);
+        if (modalInstance) {
+            modalInstance.hide();
         }
     }
 
@@ -432,6 +459,47 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- INITIALIZATION ---
+    function initializeSleepTimer() {
+        const savedEndTime = localStorage.getItem('sleepTimerEndTime');
+        const savedIsPaused = localStorage.getItem('isSleepTimerPaused');
+        const savedRemainingPausedTime = localStorage.getItem('sleepTimerRemainingPausedTime');
+
+        if (savedEndTime) {
+            sleepTimerEndTime = parseInt(savedEndTime, 10);
+
+            if (savedIsPaused === 'true' && savedRemainingPausedTime) {
+                // Timer was paused
+                isSleepTimerPaused = true;
+                sleepTimerRemainingPausedTime = parseInt(savedRemainingPausedTime, 10);
+                const remainingSeconds = Math.round(sleepTimerRemainingPausedTime / 1000);
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+                const formattedTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+                sleepTimerCountdown.textContent = formattedTime;
+                sleepTimerNavCountdown.textContent = formattedTime;
+
+                sleepTimerNavDisplay.classList.remove('d-none');
+                sleepTimerNavDisplay.classList.add('timer-paused');
+                pauseResumeSleepTimerBtn.textContent = 'Resume';
+
+            } else {
+                // Timer was running
+                isSleepTimerPaused = false;
+                const remainingSeconds = Math.round((sleepTimerEndTime - Date.now()) / 1000);
+                if (remainingSeconds > 0) {
+                    sleepTimerInterval = setInterval(updateTimerDisplay, 1000);
+                    updateTimerDisplay();
+                    sleepTimerNavDisplay.classList.remove('d-none', 'timer-paused');
+                    pauseResumeSleepTimerBtn.textContent = 'Pause';
+                } else {
+                    // Timer expired while away
+                    cancelTimer(false);
+                }
+            }
+        }
+    }
+
     async function initializePlayer() {
         const podcastDataEl = document.getElementById('podcast-positions-data');
         if (podcastDataEl) {
@@ -565,4 +633,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     initializePlayer();
+    initializeSleepTimer();
 });

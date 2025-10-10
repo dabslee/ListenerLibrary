@@ -198,3 +198,22 @@ html[data-theme="dark-blue"] .form-range::-webkit-slider-runnable-track { backgr
 html[data-theme="dark"] #shuffle-btn.active { color: white }
 html[data-theme="light-blue"] #shuffle-btn.active { color: white; background-color: #0d47a1; }
 html[data-theme="dark-blue"] #shuffle-btn.active { color: white; background-color: #778da9; }
+
+/* --- Sleep Timer Modal --- */
+html[data-theme="dark"] .modal-content {
+    background-color: #212529;
+    color: #f8f9fa;
+    border-color: #495057;
+}
+
+html[data-theme="light-blue"] .modal-content {
+    background-color: #e3f2fd;
+    border-color: #90caf9;
+    color: #0d47a1;
+}
+
+html[data-theme="dark-blue"] .modal-content {
+    background-color: #1b263b;
+    border-color: #415a77;
+    color: #e0e1dd;
+}
