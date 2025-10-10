@@ -14,7 +14,9 @@ from .models import Track, UserPlaybackState, PodcastProgress, Playlist, Playlis
 from mutagen import File as MutagenFile
 from django.utils import timezone
 from django.db import models
-
+from wsgiref.util import FileWrapper
+from django.http import HttpResponse
+from django.urls import reverse
 import json
 
 @login_required
@@ -365,7 +367,7 @@ def playlist_tracks_api(request, playlist_id):
             'id': track.id,
             'name': track.name,
             'artist': track.artist,
-            'stream_url': request.build_absolute_uri(track.file.url),
+            'stream_url': request.build_absolute_uri(reverse('stream_track', args=[track.id])),
             'icon_url': request.build_absolute_uri(track.icon.url) if track.icon else None,
             'type': track.type,
             'position': podcast_progress_map.get(track.id, 0)
@@ -376,13 +378,14 @@ def playlist_tracks_api(request, playlist_id):
 def stream_track(request, track_id):
     track = get_object_or_404(Track, pk=track_id, owner=request.user)
     path = track.file.path
-
-    range_header = request.META.get('HTTP_RANGE', '').strip()
-    range_match = range_re.match(range_header)
-
     size = os.path.getsize(path)
     content_type, _ = mimetypes.guess_type(path)
     content_type = content_type or 'application/octet-stream'
+
+    range_header = request.META.get('HTTP_RANGE', '').strip()
+    range_match = range_re.match(range_header)
+    print("Range header raw:", request.META.get('HTTP_RANGE'))
+    print("Range regex match:", bool(range_match))
 
     if range_match:
         first_byte, last_byte = range_match.groups()
@@ -392,12 +395,16 @@ def stream_track(request, track_id):
             last_byte = size - 1
         length = last_byte - first_byte + 1
 
-        resp = StreamingHttpResponse(RangeFileWrapper(open(path, 'rb'), offset=first_byte, length=length), status=206, content_type=content_type)
-        resp['Content-Length'] = str(length)
-        resp['Content-Range'] = f'bytes {first_byte}-{last_byte}/{size}'
-    else:
-        resp = StreamingHttpResponse(open(path, 'rb'), content_type=content_type)
-        resp['Content-Length'] = str(size)
+        # manually seek before wrapping
+        f = open(path, 'rb')
+        f.seek(first_byte)
 
-    resp['Accept-Ranges'] = 'bytes'
-    return resp
+        response = HttpResponse(FileWrapper(f, blksize=4096), status=206, content_type=content_type)
+        response['Content-Length'] = str(length)
+        response['Content-Range'] = f'bytes {first_byte}-{last_byte}/{size}'
+    else:
+        response = HttpResponse(FileWrapper(open(path, 'rb')), content_type=content_type)
+        response['Content-Length'] = str(size)
+
+    response['Accept-Ranges'] = 'bytes'
+    return response
