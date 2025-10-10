@@ -22,6 +22,9 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-text mx-auto d-none" id="sleep-timer-display">
+                    <i class="fas fa-moon me-2"></i><span id="sleep-timer-nav-countdown"></span>
+                </div>
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
@@ -50,6 +53,8 @@
                                     </div>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#sleep-timer-modal">Sleep Timer</a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'password_reset' %}">Reset password</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
                             </ul>
@@ -72,6 +77,31 @@
 
     <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1100">
         <!-- Toasts will be appended here -->
+    </div>
+
+    <div class="modal fade" id="sleep-timer-modal" tabindex="-1" aria-labelledby="sleep-timer-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sleep-timer-modal-label">Sleep Timer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="setup-timer-view">
+                        <p>Set a timer to stop playback after a certain amount of time.</p>
+                        <div class="input-group">
+                            <input type="number" id="sleep-timer-minutes" class="form-control" placeholder="Minutes" min="1">
+                            <button class="btn btn-primary" id="start-sleep-timer">Start</button>
+                        </div>
+                    </div>
+                    <div id="active-timer-view" style="display: none;">
+                        <p>Time remaining: <span id="sleep-timer-countdown"></span></p>
+                        <button class="btn btn-secondary" id="pause-resume-sleep-timer">Pause</button>
+                        <button class="btn btn-danger" id="cancel-sleep-timer">Cancel Timer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <main class="container mt-4 mb-5 pb-5">

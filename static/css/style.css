@@ -22,6 +22,10 @@ button:disabled {
     opacity: 0.3 !important;
 }
 
+.timer-paused {
+    opacity: 0.5;
+}
+
 /* --- Mobile Friendliness --- */
 @media (max-width: 767.98px) {
     .body-padded {

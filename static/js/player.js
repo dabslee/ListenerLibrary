@@ -17,11 +17,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const playerPlaylistInfo = document.getElementById('player-playlist-info');
     const playerPlaylistName = document.getElementById('player-playlist-name');
 
+    // Sleep Timer UI
+    const sleepTimerModal = document.getElementById('sleep-timer-modal');
+    const setupTimerView = document.getElementById('setup-timer-view');
+    const activeTimerView = document.getElementById('active-timer-view');
+    const sleepTimerMinutesInput = document.getElementById('sleep-timer-minutes');
+    const startSleepTimerBtn = document.getElementById('start-sleep-timer');
+    const cancelSleepTimerBtn = document.getElementById('cancel-sleep-timer');
+    const pauseResumeSleepTimerBtn = document.getElementById('pause-resume-sleep-timer');
+    const sleepTimerCountdown = document.getElementById('sleep-timer-countdown');
+    const sleepTimerNavDisplay = document.getElementById('sleep-timer-display');
+    const sleepTimerNavCountdown = document.getElementById('sleep-timer-nav-countdown');
+
 
     // --- STATE VARIABLES ---
     let currentTrack = null; // Store the full track object
     let saveInterval = null;
     let podcastPositions = {};
+
+    // Sleep Timer State
+    let sleepTimerInterval = null;
+    let sleepTimerEndTime = null;
+    let isSleepTimerPaused = false;
+    let sleepTimerRemainingPausedTime = 0;
 
     // Playlist State
     let currentPlaylist = null; // {id, name}
@@ -63,6 +81,86 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return newArray;
     }
+
+    // --- SLEEP TIMER LOGIC ---
+    function updateTimerDisplay() {
+        if (!sleepTimerEndTime || isSleepTimerPaused) return;
+
+        const remainingSeconds = Math.round((sleepTimerEndTime - Date.now()) / 1000);
+
+        if (remainingSeconds <= 0) {
+            audioPlayer.pause();
+            showToast("Playback paused by sleep timer.");
+            cancelTimer(false); // Don't close the modal if it's open
+            return;
+        }
+
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+        const formattedTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+        sleepTimerCountdown.textContent = formattedTime;
+        sleepTimerNavCountdown.textContent = formattedTime;
+    }
+
+    function startTimer(minutes) {
+        if (minutes <= 0) return;
+
+        // Reset state before starting a new timer
+        cancelTimer(false);
+
+        isSleepTimerPaused = false;
+        sleepTimerEndTime = Date.now() + minutes * 60 * 1000;
+        sleepTimerInterval = setInterval(updateTimerDisplay, 1000);
+
+        updateTimerDisplay();
+
+        setupTimerView.style.display = 'none';
+        activeTimerView.style.display = 'block';
+        sleepTimerNavDisplay.classList.remove('d-none', 'timer-paused');
+        pauseResumeSleepTimerBtn.textContent = 'Pause';
+        showToast(`Sleep timer set for ${minutes} minutes.`);
+    }
+
+    function cancelTimer(closeModal = true) {
+        if (sleepTimerInterval) clearInterval(sleepTimerInterval);
+        sleepTimerInterval = null;
+        sleepTimerEndTime = null;
+        isSleepTimerPaused = false;
+        sleepTimerRemainingPausedTime = 0;
+
+        setupTimerView.style.display = 'block';
+        activeTimerView.style.display = 'none';
+        sleepTimerNavDisplay.classList.add('d-none');
+        sleepTimerNavDisplay.classList.remove('timer-paused');
+        sleepTimerMinutesInput.value = '';
+
+        if (closeModal) {
+            const modalInstance = bootstrap.Modal.getInstance(sleepTimerModal);
+            if (modalInstance) modalInstance.hide();
+        }
+    }
+
+    function togglePauseTimer() {
+        isSleepTimerPaused = !isSleepTimerPaused;
+
+        if (isSleepTimerPaused) {
+            // Pause the timer
+            if (sleepTimerInterval) clearInterval(sleepTimerInterval);
+            sleepTimerRemainingPausedTime = sleepTimerEndTime - Date.now();
+            pauseResumeSleepTimerBtn.textContent = 'Resume';
+            sleepTimerNavDisplay.classList.add('timer-paused');
+            showToast("Sleep timer paused.");
+        } else {
+            // Resume the timer
+            sleepTimerEndTime = Date.now() + sleepTimerRemainingPausedTime;
+            sleepTimerInterval = setInterval(updateTimerDisplay, 1000);
+            pauseResumeSleepTimerBtn.textContent = 'Pause';
+            sleepTimerNavDisplay.classList.remove('timer-paused');
+            showToast("Sleep timer resumed.");
+        }
+    }
+
 
     // --- PLAYBACK STATE MANAGEMENT ---
     async function savePlaybackState() {
@@ -430,6 +528,41 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'ArrowRight': event.preventDefault(); if (skipForwardBtn) skipForwardBtn.click(); break;
         }
     });
+
+    // --- SLEEP TIMER EVENT LISTENERS ---
+    startSleepTimerBtn.addEventListener('click', () => {
+        const minutes = parseInt(sleepTimerMinutesInput.value, 10);
+        if (!isNaN(minutes) && minutes > 0) {
+            startTimer(minutes);
+        } else {
+            showToast("Please enter a valid number of minutes.", "var(--bs-danger)");
+        }
+    });
+
+    cancelSleepTimerBtn.addEventListener('click', () => {
+        cancelTimer(true);
+        showToast("Sleep timer cancelled.");
+    });
+
+    pauseResumeSleepTimerBtn.addEventListener('click', togglePauseTimer);
+
+    sleepTimerModal.addEventListener('show.bs.modal', () => {
+        // When modal opens, show the correct view based on timer state
+        if (sleepTimerEndTime) {
+            setupTimerView.style.display = 'none';
+            activeTimerView.style.display = 'block';
+            updateTimerDisplay(); // Ensure countdown is up-to-date
+        } else {
+            setupTimerView.style.display = 'block';
+            activeTimerView.style.display = 'none';
+        }
+    });
+
+    sleepTimerNavDisplay.addEventListener('click', () => {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(sleepTimerModal);
+        modalInstance.show();
+    });
+
 
     initializePlayer();
 });
