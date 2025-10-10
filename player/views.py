@@ -5,7 +5,7 @@ import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
@@ -83,7 +83,8 @@ def register(request):
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
+            # Explicitly specify the backend to ensure session is created correctly.
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             return redirect('track_list')
     else:
         form = UserCreationForm()
@@ -395,15 +396,14 @@ def stream_track(request, track_id):
             last_byte = size - 1
         length = last_byte - first_byte + 1
 
-        # manually seek before wrapping
+        # Use the custom RangeFileWrapper for ranged requests
         f = open(path, 'rb')
-        f.seek(first_byte)
-
-        response = HttpResponse(FileWrapper(f, blksize=4096), status=206, content_type=content_type)
+        response = StreamingHttpResponse(RangeFileWrapper(f, offset=first_byte, length=length), status=206, content_type=content_type)
         response['Content-Length'] = str(length)
         response['Content-Range'] = f'bytes {first_byte}-{last_byte}/{size}'
     else:
-        response = HttpResponse(FileWrapper(open(path, 'rb')), content_type=content_type)
+        # Use StreamingHttpResponse for non-range requests as well for consistency
+        response = StreamingHttpResponse(open(path, 'rb'), content_type=content_type)
         response['Content-Length'] = str(size)
 
     response['Accept-Ranges'] = 'bytes'
