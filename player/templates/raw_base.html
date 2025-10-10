@@ -23,7 +23,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <div class="navbar-text d-none" id="sleep-timer-display">
-                    <i class="fas fa-moon me-2"></i><span id="sleep-timer-nav-countdown"></span>
+                    <i class="fas fa-moon me-2"></i> <span id="sleep-timer-nav-countdown"></span>
                 </div>
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
@@ -75,10 +75,6 @@
         </div>
     </nav>
 
-    <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1100">
-        <!-- Toasts will be appended here -->
-    </div>
-
     <div class="modal fade" id="sleep-timer-modal" tabindex="-1" aria-labelledby="sleep-timer-modal-label" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -105,6 +101,9 @@
     </div>
 
     <main class="container mt-4 mb-5 pb-5">
+        <div class="toast-container position-fixed start-0 p-3" style="z-index: 1100; top: 3rem;">
+            <!-- Toasts will be appended here -->
+        </div>
         {% block content %}{% endblock %}
     </main>
 
