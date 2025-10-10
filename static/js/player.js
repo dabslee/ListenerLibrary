@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const sleepTimerCountdown = document.getElementById('sleep-timer-countdown');
     const sleepTimerNavDisplay = document.getElementById('sleep-timer-display');
     const sleepTimerNavCountdown = document.getElementById('sleep-timer-nav-countdown');
+    const sleepTimerMobileCountdown = document.getElementById('sleep-timer-mobile-countdown');
 
 
     // --- STATE VARIABLES ---
@@ -101,6 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         sleepTimerCountdown.textContent = formattedTime;
         sleepTimerNavCountdown.textContent = formattedTime;
+        sleepTimerMobileCountdown.textContent = formattedTime;
     }
 
     function startTimer(minutes) {
@@ -121,7 +123,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         setupTimerView.style.display = 'none';
         activeTimerView.style.display = 'block';
+
         sleepTimerNavDisplay.classList.remove('d-none', 'timer-paused');
+        sleepTimerMobileCountdown.classList.remove('d-none', 'timer-paused');
+
         pauseResumeSleepTimerBtn.textContent = 'Pause';
         showToast(`Sleep timer set for ${minutes} minutes.`);
 
@@ -144,8 +149,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         setupTimerView.style.display = 'block';
         activeTimerView.style.display = 'none';
+
         sleepTimerNavDisplay.classList.add('d-none');
         sleepTimerNavDisplay.classList.remove('timer-paused');
+        sleepTimerMobileCountdown.classList.add('d-none');
+        sleepTimerMobileCountdown.classList.remove('timer-paused');
+
         sleepTimerMinutesInput.value = '';
 
         if (closeModal) {
@@ -167,6 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             pauseResumeSleepTimerBtn.textContent = 'Resume';
             sleepTimerNavDisplay.classList.add('timer-paused');
+            sleepTimerMobileCountdown.classList.add('timer-paused');
             showToast("Sleep timer paused.");
         } else {
             // Resume the timer
@@ -179,6 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sleepTimerInterval = setInterval(updateTimerDisplay, 1000);
             pauseResumeSleepTimerBtn.textContent = 'Pause';
             sleepTimerNavDisplay.classList.remove('timer-paused');
+            sleepTimerMobileCountdown.classList.remove('timer-paused');
             showToast("Sleep timer resumed.");
         }
 
@@ -478,9 +489,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 sleepTimerCountdown.textContent = formattedTime;
                 sleepTimerNavCountdown.textContent = formattedTime;
+                sleepTimerMobileCountdown.textContent = formattedTime;
 
                 sleepTimerNavDisplay.classList.remove('d-none');
                 sleepTimerNavDisplay.classList.add('timer-paused');
+                sleepTimerMobileCountdown.classList.remove('d-none');
+                sleepTimerMobileCountdown.classList.add('timer-paused');
                 pauseResumeSleepTimerBtn.textContent = 'Resume';
 
             } else {
@@ -491,6 +505,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     sleepTimerInterval = setInterval(updateTimerDisplay, 1000);
                     updateTimerDisplay();
                     sleepTimerNavDisplay.classList.remove('d-none', 'timer-paused');
+                    sleepTimerMobileCountdown.classList.remove('d-none', 'timer-paused');
                     pauseResumeSleepTimerBtn.textContent = 'Pause';
                 } else {
                     // Timer expired while away
