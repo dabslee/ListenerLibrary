@@ -12,6 +12,22 @@
 
     <div class="card bg-light mb-4">
         <div class="card-body">
+            <h5>Storage Status</h5>
+            {% with percentage=storage_percentage|default:0 %}
+            <div class="progress mb-2" style="height: 20px;">
+                <div class="progress-bar {% if percentage > 95 %}bg-danger{% elif percentage > 80 %}bg-warning{% endif %}" role="progressbar" style="width: {{ percentage }}%;" aria-valuenow="{{ percentage }}" aria-valuemin="0" aria-valuemax="100">
+                    {{ percentage|floatformat:2 }}%
+                </div>
+            </div>
+            <p class="text-muted mb-0">
+                You've used {{ storage_usage|format_bytes }} of {{ storage_limit|format_bytes }}
+            </p>
+            {% endwith %}
+        </div>
+    </div>
+
+    <div class="card bg-light mb-4">
+        <div class="card-body">
             <form id="filter-sort-form" onsubmit="return false;">
                 <div class="row g-3 align-items-end">
                     <!-- Search -->

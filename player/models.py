@@ -14,6 +14,7 @@ class Track(models.Model):
     icon = models.ImageField(upload_to='track_icons/', null=True, blank=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     duration = models.FloatField(default=0)
+    file_size = models.BigIntegerField(default=0)
 
     def __str__(self):
         return self.name

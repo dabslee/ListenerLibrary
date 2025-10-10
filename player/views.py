@@ -18,17 +18,19 @@ from wsgiref.util import FileWrapper
 from django.http import HttpResponse
 from django.urls import reverse
 import json
+from django.conf import settings
 
 @login_required
 def track_list(request):
     # Fetch all tracks and related data efficiently.
-    # Prefetch playlists to avoid N+1 queries in the template for data-playlists.
     tracks_query = Track.objects.filter(owner=request.user).order_by('name').prefetch_related('playlists')
-
     playlists = Playlist.objects.filter(owner=request.user)
-    artists = Track.objects.filter(owner=request.user).values_list('artist', flat=True).distinct().order_by('artist')
+    artists = tracks_query.values_list('artist', flat=True).distinct().order_by('artist')
 
-    # We need all tracks for client-side filtering, so convert to list here.
+    # Calculate storage usage
+    current_storage_usage = tracks_query.aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+    storage_percentage = (current_storage_usage / settings.STORAGE_LIMIT_BYTES) * 100 if settings.STORAGE_LIMIT_BYTES > 0 else 0
+
     tracks = list(tracks_query)
     track_ids = [t.id for t in tracks]
 
@@ -41,24 +43,17 @@ def track_list(request):
 
     # Attach the extra data to each track object
     for track in tracks:
-        # Add last_played_iso for client-side sorting
         last_played_dt = last_played_map.get(track.id)
         track.last_played_iso = last_played_dt.isoformat() if last_played_dt else ''
 
-        # Add progress bar data
         if track.type == 'podcast':
             position = podcast_progress_map.get(track.id, 0)
             track.position = position
-            if track.duration and track.duration > 0:
-                track.progress_percentage = (position / track.duration) * 100
-            else:
-                track.progress_percentage = 0
+            track.progress_percentage = (position / track.duration) * 100 if track.duration and track.duration > 0 else 0
         else:
             track.position = 0
             track.progress_percentage = 0
 
-    # The GET params are still read to set the initial state of the filter controls.
-    # The actual filtering is done by JS.
     context = {
         'tracks': tracks,
         'playlists': playlists,
@@ -67,6 +62,9 @@ def track_list(request):
         'selected_artist': request.GET.get('artist'),
         'search_query': request.GET.get('search'),
         'sort_option': request.GET.get('sort', 'name'),
+        'storage_usage': current_storage_usage,
+        'storage_limit': settings.STORAGE_LIMIT_BYTES,
+        'storage_percentage': storage_percentage,
     }
     return render(request, 'player/track_list.html', context)
 
@@ -98,18 +96,25 @@ def upload_track(request):
             track = form.save(commit=False)
             track.owner = request.user
 
-            # Calculate and save track duration
+            # Check storage limit
             audio_file = request.FILES['file']
+            new_track_size = audio_file.size
+            current_storage_usage = Track.objects.filter(owner=request.user).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+
+            if current_storage_usage + new_track_size > settings.STORAGE_LIMIT_BYTES:
+                form.add_error(None, f"Uploading this track would exceed your {settings.STORAGE_LIMIT_GB}GB storage limit.")
+                return render(request, 'player/upload_track.html', {'form': form})
+
+            track.file_size = new_track_size
+
+            # Calculate and save track duration
             try:
                 audio = MutagenFile(audio_file)
                 if audio:
                     track.duration = audio.info.length
             except Exception as e:
-                # Handle cases where mutagen can't read the file
-                # For now, we'll just leave duration as 0
                 print(f"Error reading audio file metadata: {e}")
             finally:
-                # Reset file pointer for Django's saving mechanism
                 audio_file.seek(0)
 
             track.save()
@@ -129,14 +134,26 @@ def delete_track(request, track_id):
 @login_required
 def edit_track(request, track_id):
     track = get_object_or_404(Track, pk=track_id, owner=request.user)
+
     if request.method == 'POST':
         form = TrackForm(request.POST, request.FILES, instance=track)
         if form.is_valid():
             edited_track = form.save(commit=False)
 
-            # If a new file is uploaded, calculate its duration
             if 'file' in request.FILES:
                 audio_file = request.FILES['file']
+                new_track_size = audio_file.size
+                old_track_size = track.file_size or 0
+
+                # Check storage limit
+                current_storage_usage = Track.objects.filter(owner=request.user).exclude(pk=track_id).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+                if current_storage_usage + new_track_size > settings.STORAGE_LIMIT_BYTES:
+                    form.add_error(None, f"Uploading this track would exceed your {settings.STORAGE_LIMIT_GB}GB storage limit.")
+                    return render(request, 'player/edit_track.html', {'form': form, 'track': track})
+
+                edited_track.file_size = new_track_size
+
+                # Calculate duration
                 try:
                     audio = MutagenFile(audio_file)
                     if audio:
@@ -147,7 +164,7 @@ def edit_track(request, track_id):
                     audio_file.seek(0)
 
             edited_track.save()
-            form.save_m2m() # To save many-to-many fields if any
+            form.save_m2m()
             return redirect('track_list')
     else:
         form = TrackForm(instance=track)
