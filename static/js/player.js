@@ -385,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     durationEl.textContent = formatTime(audioPlayer.duration);
                     seekBar.value = (audioPlayer.duration > 0) ? (startPosition / audioPlayer.duration) * 100 : 0;
                 }
-                audioPlayer.play().catch(e => console.error("Playback error:", e));
+                // audioPlayer.play().catch(e => console.error("Playback error:", e));
             }, { once: true });
             audioPlayer.load();
 
