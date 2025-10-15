@@ -4,28 +4,38 @@
 <div class="row justify-content-center">
     <div class="col-md-8">
         <h2 class="mb-4">Upload a New Track</h2>
-        <form method="post" enctype="multipart/form-data">
+        <form id="upload-form" method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
-            {% for field in form %}
-            <div class="mb-3">
-                <label for="{{ field.id_for_label }}" class="form-label">
-                    {{ field.label }}
-                    {% if field.field.required %}
-                        <span class="text-danger">*</span>
+            <div id="form-fields">
+                {% for field in form %}
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">
+                        {{ field.label }}
+                        {% if field.field.required %}
+                            <span class="text-danger">*</span>
+                        {% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small class="form-text text-muted">{{ field.help_text|safe }}</small>
                     {% endif %}
-                </label>
-                {{ field }}
-                {% if field.help_text %}
-                    <small class="form-text text-muted">{{ field.help_text|safe }}</small>
-                {% endif %}
-                {% for error in field.errors %}
-                    <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% for error in field.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
                 {% endfor %}
             </div>
-            {% endfor %}
 
-            <button type="submit" class="btn btn-primary mt-3">Upload Track</button>
+            <!-- Error container for AJAX responses -->
+            <div id="error-container" class="alert alert-danger d-none" role="alert"></div>
+
+            <!-- Progress bar -->
+            <div id="progress-container" class="progress mt-3 d-none">
+                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+
+            <button type="submit" id="upload-button" class="btn btn-primary mt-3">Upload Track</button>
         </form>
     </div>
 </div>
@@ -34,21 +44,106 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById('id_file');
     const nameInput = document.getElementById('id_name');
 
-    if (!fileInput || !nameInput) {
-        return;
+    if (fileInput && nameInput) {
+        fileInput.addEventListener('change', function () {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+                return;
+            }
+
+            const baseName = file.name.replace(/\.[^/.]+$/, ''); // Removes the extension
+            if (!nameInput.value.trim()) {
+                nameInput.value = baseName;
+            }
+        });
     }
 
-    fileInput.addEventListener('change', function () {
-        const file = fileInput.files && fileInput.files[0];
-        if (!file) {
-            return;
+    const form = document.getElementById('upload-form');
+    const uploadButton = document.getElementById('upload-button');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const errorContainer = document.getElementById('error-container');
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', form.action, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        xhr.upload.addEventListener('progress', function (e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                const percentStr = percentComplete.toFixed(0) + '%';
+                progressBar.style.width = percentStr;
+                progressBar.textContent = percentStr;
+                progressBar.setAttribute('aria-valuenow', percentComplete);
+            }
+        });
+
+        xhr.addEventListener('loadstart', function() {
+            // Show progress bar and disable button
+            progressContainer.classList.remove('d-none');
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Uploading...';
+            errorContainer.classList.add('d-none'); // Hide previous errors
+        });
+
+        xhr.addEventListener('load', function () {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.status === 'success') {
+                        progressBar.classList.add('bg-success');
+                        progressBar.textContent = 'Upload Complete!';
+                        window.location.href = response.redirect_url;
+                    } else {
+                        handleErrorResponse(response.errors);
+                    }
+                } catch (err) {
+                     handleErrorResponse({ __all__: ['An unexpected error occurred. Please try again.'] });
+                }
+            } else {
+                 handleErrorResponse({ __all__: [`Server returned status ${xhr.status}. Please try again.`] });
+            }
+        });
+
+        xhr.addEventListener('error', function () {
+            handleErrorResponse({ __all__: ['An error occurred during the upload. Please check your network connection and try again.'] });
+        });
+
+        xhr.addEventListener('loadend', function() {
+            // Re-enable button unless successful
+            const response = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            if (response.status !== 'success') {
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Upload Track';
+                progressContainer.classList.add('d-none'); // Hide progress bar on error
+            }
+        });
+
+        xhr.send(formData);
+    });
+
+    function handleErrorResponse(errors) {
+        let errorHtml = '';
+        if (typeof errors === 'object' && errors !== null) {
+            for (const field in errors) {
+                if (errors.hasOwnProperty(field)) {
+                    // '__all__' is Django's key for non-field errors
+                    const prefix = field === '__all__' ? '' : `${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: `;
+                    errorHtml += `<p>${prefix}${errors[field][0].message || errors[field][0]}</p>`;
+                }
+            }
+        } else {
+            errorHtml = '<p>An unexpected error occurred.</p>';
         }
 
-        const baseName = file.name.replace(/\.mp3$/i, '');
-        if (!nameInput.value.trim()) {
-            nameInput.value = baseName;
-        }
-    });
+        errorContainer.innerHTML = errorHtml;
+        errorContainer.classList.remove('d-none');
+    }
 });
 </script>
 {% endblock %}

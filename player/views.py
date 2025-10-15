@@ -90,37 +90,50 @@ def register(request):
 
 @login_required
 def upload_track(request):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if request.method == 'POST':
         form = TrackForm(request.POST, request.FILES)
         if form.is_valid():
             track = form.save(commit=False)
             track.owner = request.user
 
-            # Check storage limit
             audio_file = request.FILES['file']
             new_track_size = audio_file.size
             current_storage_usage = Track.objects.filter(owner=request.user).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
 
             if current_storage_usage + new_track_size > settings.STORAGE_LIMIT_BYTES:
                 form.add_error(None, f"Uploading this track would exceed your {settings.STORAGE_LIMIT_GB}GB storage limit.")
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
                 return render(request, 'player/upload_track.html', {'form': form})
 
             track.file_size = new_track_size
 
-            # Calculate and save track duration
             try:
                 audio = MutagenFile(audio_file)
                 if audio:
                     track.duration = audio.info.length
             except Exception as e:
-                print(f"Error reading audio file metadata: {e}")
+                logging.error(f"Error reading audio file metadata: {e}")
             finally:
                 audio_file.seek(0)
 
             track.save()
+
+            if is_ajax:
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Track uploaded successfully!',
+                    'redirect_url': reverse('track_list')
+                })
             return redirect('track_list')
+        else:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
     else:
         form = TrackForm()
+
     return render(request, 'player/upload_track.html', {'form': form})
 
 @login_required
