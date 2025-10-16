@@ -147,3 +147,12 @@ LOGOUT_REDIRECT_URL = "/"
 # User storage limit in gigabytes
 STORAGE_LIMIT_GB = 5
 STORAGE_LIMIT_BYTES = STORAGE_LIMIT_GB * 1024 * 1024 * 1024
+
+# CSRF settings
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [
+    "https://brandonssandbox.com",
+    "http://brandonssandbox.com",
+    "https://*.brandonssandbox.com",
+    "http://*.brandonssandbox.com",
+]
