@@ -4,11 +4,11 @@ from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
-
+from django.core.validators import MinValueValidator
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    storage_limit_gb = models.PositiveIntegerField(default=settings.DEFAULT_USER_STORAGE_LIMIT_GB)
+    storage_limit_gb = models.FloatField(default=settings.DEFAULT_USER_STORAGE_LIMIT_GB, validators=[MinValueValidator(0.0)])
 
     def __str__(self):
         return self.user.username
