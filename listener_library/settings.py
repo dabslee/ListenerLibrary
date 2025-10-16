@@ -22,7 +22,7 @@ from . import secrets
 SECRET_KEY = secrets.SECRET_KEY
 DEBUG = secrets.DEBUG
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"] + secrets.ALLOWED_HOSTS_IPS
+ALLOWED_HOSTS = ['.brandonssandbox.com', '.herokuapp.com', '127.0.0.1', 'localhost'] + secrets.ALLOWED_HOSTS_IPS
 
 
 # Application definition
