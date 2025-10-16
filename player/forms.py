@@ -1,10 +1,20 @@
 from django import forms
-from .models import Track, Playlist
+from django.contrib.auth.forms import UserCreationForm
+from .models import Track, Playlist, Bookmark
+
+class CustomUserCreationForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        fields = UserCreationForm.Meta.fields + ('email',)
 
 class PlaylistForm(forms.ModelForm):
     class Meta:
         model = Playlist
         fields = ['name', 'image']
+
+class BookmarkForm(forms.ModelForm):
+    class Meta:
+        model = Bookmark
+        fields = ['name']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'image': forms.FileInput(attrs={'class': 'form-control'}),

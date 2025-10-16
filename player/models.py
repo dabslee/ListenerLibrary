@@ -76,3 +76,15 @@ class UserTrackLastPlayed(models.Model):
 
     def __str__(self):
         return f"{self.user.username} last played {self.track.name} at {self.last_played}"
+
+
+class Bookmark(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    track = models.ForeignKey(Track, on_delete=models.SET_NULL, null=True, blank=True)
+    position = models.FloatField(default=0)
+    shuffle = models.BooleanField(default=False)
+    playlist = models.ForeignKey('Playlist', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s bookmark: {self.name}"
