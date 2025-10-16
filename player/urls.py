@@ -23,4 +23,9 @@ urlpatterns = [
     path('playlists/add_track/', views.add_track_to_playlist, name='add_track_to_playlist'),
     path('playlists/remove_track/<int:playlist_id>/<int:track_id>/', views.remove_track_from_playlist, name='remove_track_from_playlist'),
     path('api/playlist_tracks/<int:playlist_id>/', views.playlist_tracks_api, name='playlist_tracks_api'),
+
+    # Bookmark URLs
+    path('bookmark/create/', views.create_bookmark, name='create_bookmark'),
+    path('bookmark/<int:bookmark_id>/play/', views.play_bookmark, name='play_bookmark'),
+    path('bookmark/<int:bookmark_id>/delete/', views.delete_bookmark, name='delete_bookmark'),
 ]

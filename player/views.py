@@ -4,13 +4,12 @@ import mimetypes
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, authenticate
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from .forms import TrackForm, PlaylistForm
-from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed
+from .forms import TrackForm, PlaylistForm, BookmarkForm, CustomUserCreationForm
+from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed, Bookmark
 from mutagen import File as MutagenFile
 from django.utils import timezone
 from django.db import models
@@ -54,6 +53,9 @@ def track_list(request):
             track.position = 0
             track.progress_percentage = 0
 
+    bookmarks = Bookmark.objects.filter(user=request.user).order_by('name')
+    bookmark_form = BookmarkForm()
+
     context = {
         'tracks': tracks,
         'playlists': playlists,
@@ -65,6 +67,8 @@ def track_list(request):
         'storage_usage': current_storage_usage,
         'storage_limit': settings.STORAGE_LIMIT_BYTES,
         'storage_percentage': storage_percentage,
+        'bookmarks': bookmarks,
+        'bookmark_form': bookmark_form,
     }
     return render(request, 'player/track_list.html', context)
 
@@ -78,14 +82,14 @@ def profile(request):
 
 def register(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
             # Explicitly specify the backend to ensure session is created correctly.
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             return redirect('track_list')
     else:
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
 
 @login_required
@@ -404,6 +408,51 @@ def playlist_tracks_api(request, playlist_id):
             'position': podcast_progress_map.get(track.id, 0)
         })
     return JsonResponse(tracks_data, safe=False)
+
+@login_required
+@require_POST
+def delete_bookmark(request, bookmark_id):
+    bookmark = get_object_or_404(Bookmark, pk=bookmark_id, user=request.user)
+    bookmark.delete()
+    return JsonResponse({'status': 'success', 'message': 'Bookmark deleted.'})
+
+
+@login_required
+@require_POST
+def play_bookmark(request, bookmark_id):
+    bookmark = get_object_or_404(Bookmark, pk=bookmark_id, user=request.user)
+    UserPlaybackState.objects.update_or_create(
+        user=request.user,
+        defaults={
+            'track': bookmark.track,
+            'last_played_position': bookmark.position,
+            'playlist': bookmark.playlist,
+            'shuffle': bookmark.shuffle,
+        }
+    )
+    return JsonResponse({'status': 'success', 'message': 'Playback state updated.'})
+
+
+@login_required
+@require_POST
+def create_bookmark(request):
+    form = BookmarkForm(request.POST)
+    if form.is_valid():
+        try:
+            playback_state = UserPlaybackState.objects.get(user=request.user)
+            bookmark = form.save(commit=False)
+            bookmark.user = request.user
+            bookmark.track = playback_state.track
+            bookmark.position = playback_state.last_played_position
+            bookmark.shuffle = playback_state.shuffle
+            bookmark.playlist = playback_state.playlist
+            bookmark.save()
+            return JsonResponse({'status': 'success', 'message': 'Bookmark created.'})
+        except UserPlaybackState.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'No current playback state to bookmark.'}, status=404)
+    else:
+        return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+
 
 @login_required
 def stream_track(request, track_id):
