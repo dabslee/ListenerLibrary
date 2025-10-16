@@ -5,3 +5,4 @@ from .models import *
 admin.site.register(Track)
 admin.site.register(UserPlaybackState)
 admin.site.register(PodcastProgress)
+admin.site.register(Bookmark)
