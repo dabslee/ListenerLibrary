@@ -29,7 +29,8 @@ def track_list(request):
 
     # Calculate storage usage
     current_storage_usage = tracks_query.aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
-    storage_percentage = (current_storage_usage / settings.STORAGE_LIMIT_BYTES) * 100 if settings.STORAGE_LIMIT_BYTES > 0 else 0
+    user_storage_limit_bytes = request.user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
+    storage_percentage = (current_storage_usage / user_storage_limit_bytes) * 100 if user_storage_limit_bytes > 0 else 0
 
     tracks = list(tracks_query)
     track_ids = [t.id for t in tracks]
@@ -66,7 +67,7 @@ def track_list(request):
         'search_query': request.GET.get('search'),
         'sort_option': request.GET.get('sort', 'name'),
         'storage_usage': current_storage_usage,
-        'storage_limit': settings.STORAGE_LIMIT_BYTES,
+        'storage_limit': user_storage_limit_bytes,
         'storage_percentage': storage_percentage,
         'bookmarks': bookmarks,
         'bookmark_form': bookmark_form,
@@ -81,12 +82,20 @@ def play_focus(request):
 def profile(request):
     return render(request, 'registration/profile.html')
 
+from .models import UserProfile
+from django.db.models import Sum
+
 def register(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
+        total_storage_limit = UserProfile.objects.aggregate(Sum('storage_limit_gb'))['storage_limit_gb__sum'] or 0
+        if total_storage_limit + settings.DEFAULT_USER_STORAGE_LIMIT_GB > settings.STORAGE_LIMIT_GB_TOTAL:
+            form.add_error(None, "Registration is currently disabled due to storage limitations.")
+            return render(request, 'registration/register.html', {'form': form})
+
         if form.is_valid():
             user = form.save()
-            # Explicitly specify the backend to ensure session is created correctly.
+            # UserProfile is created automatically by the post_save signal
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             return redirect('track_list')
     else:
@@ -106,9 +115,10 @@ def upload_track(request):
             audio_file = request.FILES['file']
             new_track_size = audio_file.size
             current_storage_usage = Track.objects.filter(owner=request.user).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+            user_storage_limit_bytes = request.user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
 
-            if current_storage_usage + new_track_size > settings.STORAGE_LIMIT_BYTES:
-                form.add_error(None, f"Uploading this track would exceed your {settings.STORAGE_LIMIT_GB}GB storage limit.")
+            if current_storage_usage + new_track_size > user_storage_limit_bytes:
+                form.add_error(None, f"Uploading this track would exceed your {request.user.userprofile.storage_limit_gb}GB storage limit.")
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
                 return render(request, 'player/upload_track.html', {'form': form})
@@ -165,8 +175,9 @@ def edit_track(request, track_id):
 
                 # Check storage limit
                 current_storage_usage = Track.objects.filter(owner=request.user).exclude(pk=track_id).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
-                if current_storage_usage + new_track_size > settings.STORAGE_LIMIT_BYTES:
-                    form.add_error(None, f"Uploading this track would exceed your {settings.STORAGE_LIMIT_GB}GB storage limit.")
+                user_storage_limit_bytes = request.user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
+                if current_storage_usage + new_track_size > user_storage_limit_bytes:
+                    form.add_error(None, f"Uploading this track would exceed your {request.user.userprofile.storage_limit_gb}GB storage limit.")
                     return render(request, 'player/edit_track.html', {'form': form, 'track': track})
 
                 edited_track.file_size = new_track_size
