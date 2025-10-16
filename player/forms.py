@@ -12,7 +12,6 @@ class BookmarkForm(forms.ModelForm):
         fields = ['name']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'image': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
 class TrackForm(forms.ModelForm):

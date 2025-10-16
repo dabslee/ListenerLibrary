@@ -1,10 +1,8 @@
-from .models import UserPlaybackState
+from .models import UserPlaybackState, Bookmark
 
-def playback_state(request):
+def global_context(request):
     if request.user.is_authenticated:
-        try:
-            state = UserPlaybackState.objects.select_related('track', 'playlist').get(user=request.user)
-        except UserPlaybackState.DoesNotExist:
-            state = None
-        return {'playback_state': state}
-    return {'playback_state': None}
+        state = UserPlaybackState.objects.select_related('track', 'playlist').get(user=request.user)
+        bookmarks = Bookmark.objects.filter(user=request.user).order_by('name')
+        return {'playback_state': state, 'bookmarks': bookmarks}
+    return {'playback_state': None, 'bookmarks': []}
