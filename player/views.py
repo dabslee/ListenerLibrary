@@ -4,11 +4,12 @@ import mimetypes
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, authenticate
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from .forms import TrackForm, PlaylistForm, BookmarkForm, CustomUserCreationForm
+from .forms import TrackForm, PlaylistForm, BookmarkForm
 from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed, Bookmark
 from mutagen import File as MutagenFile
 from django.utils import timezone
@@ -82,14 +83,14 @@ def profile(request):
 
 def register(request):
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
+        form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
             # Explicitly specify the backend to ensure session is created correctly.
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             return redirect('track_list')
     else:
-        form = CustomUserCreationForm()
+        form = UserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
 
 @login_required
