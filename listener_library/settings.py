@@ -145,8 +145,8 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
 # User storage limit in gigabytes
-DEFAULT_USER_STORAGE_LIMIT_GB = 5
-STORAGE_LIMIT_GB_TOTAL = 1000
+DEFAULT_USER_STORAGE_LIMIT_GB = secrets.default_storage_limit_gb
+STORAGE_LIMIT_GB_TOTAL = secrets.total_storage_limit_gb
 
 # CSRF settings
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -155,4 +155,6 @@ CSRF_TRUSTED_ORIGINS = [
     "http://brandonssandbox.com",
     "https://*.brandonssandbox.com",
     "http://*.brandonssandbox.com",
+    "http://localhost",
+    "http://127.0.0.1",
 ]
