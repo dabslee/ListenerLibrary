@@ -20,6 +20,7 @@
                     <div class="mb-3">
                         <label for="id_tracks" class="form-label">Tracks</label>
                         {{ form.tracks }}
+                        <small class="form-text text-muted">Hold down "Control" (or "Command" on a Mac) to select more than one.</small>
                     </div>
                     <button type="submit" class="btn btn-primary">Create Playlist</button>
                     <a href="{% url 'playlist_list' %}" class="btn btn-secondary">Cancel</a>
