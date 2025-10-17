@@ -4,7 +4,23 @@ from .models import Track, Playlist, Bookmark
 class PlaylistForm(forms.ModelForm):
     class Meta:
         model = Playlist
-        fields = ['name', 'image']
+        fields = ['name', 'image', 'tracks']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'image': forms.FileInput(attrs={'class': 'form-control'}),
+            'tracks': forms.SelectMultiple(attrs={'class': 'form-control', 'size': '10'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super(PlaylistForm, self).__init__(*args, **kwargs)
+        if user:
+            self.fields['tracks'].queryset = Track.objects.filter(owner=user)
+
+class PlaylistUploadForm(forms.Form):
+    name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    image = forms.ImageField(required=False, widget=forms.FileInput(attrs={'class': 'form-control'}))
+    default_track_icon = forms.ImageField(required=False, widget=forms.FileInput(attrs={'class': 'form-control'}))
 
 class BookmarkForm(forms.ModelForm):
     class Meta:
