@@ -278,6 +278,8 @@ def edit_playlist(request, playlist_id):
 
 @login_required
 def upload_playlist(request):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if request.method == 'POST':
         form = PlaylistUploadForm(request.POST, request.FILES)
         if form.is_valid():
@@ -317,8 +319,16 @@ def upload_playlist(request):
                     order=order
                 )
 
+            if is_ajax:
+                return JsonResponse({'status': 'success', 'message': 'Playlist uploaded successfully!', 'redirect_url': reverse('playlist_list')})
             return redirect('playlist_list')
-    return redirect('playlist_list')
+        else:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
+    else:
+        form = PlaylistUploadForm()
+
+    return render(request, 'player/upload_playlist.html', {'form': form})
 
 @login_required
 def delete_playlist(request, playlist_id):
