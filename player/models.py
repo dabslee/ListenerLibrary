@@ -73,11 +73,11 @@ class Playlist(models.Model):
     def __str__(self):
         return self.name
 
-
+import sys
 class PlaylistItem(models.Model):
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE)
     track = models.ForeignKey(Track, on_delete=models.CASCADE)
-    order = models.PositiveIntegerField()
+    order = models.PositiveIntegerField(default=sys.maxsize)
 
     class Meta:
         ordering = ['order']
