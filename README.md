@@ -4,6 +4,11 @@
 
 ListenerLibrary is a mobile-friendly, web-based music player application built with Django. It allows users to upload their music, create playlists, and listen to their tracks directly in the browser. The application features a clean, responsive interface and provides core music player functionalities like playback control, track seeking, and playlist management.
 
+## Demo
+You can find a demo instance of the website at [https://listen.brandonssandbox.com/](https://listen.brandonssandbox.com/), where you can log in with the test credentials:
+- Username: `testuser`
+- Password: `Audibl3Books`
+
 ## Key Features
 
 *   **Music Upload:** Upload audio files (eg. MP3, WAV). The application automatically extracts metadata like title, artist, and duration.
