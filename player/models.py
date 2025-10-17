@@ -77,7 +77,7 @@ import sys
 class PlaylistItem(models.Model):
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE)
     track = models.ForeignKey(Track, on_delete=models.CASCADE)
-    order = models.PositiveIntegerField(default=sys.maxsize)
+    order = models.PositiveIntegerField(default=2147483647)
 
     class Meta:
         ordering = ['order']
