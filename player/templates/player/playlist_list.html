@@ -3,7 +3,12 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Your Playlists</h2>
-        <a href="{% url 'create_playlist' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Create New Playlist</a>
+        <div>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#uploadPlaylistModal">
+                <i class="fas fa-upload me-1"></i>Upload Playlist
+            </button>
+            <a href="{% url 'create_playlist' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Create New Playlist</a>
+        </div>
     </div>
 
     <div class="list-group">
@@ -39,5 +44,42 @@
                 You haven't created any playlists yet. <a href="{% url 'create_playlist' %}" class="alert-link">Create your first playlist!</a>
             </div>
         {% endfor %}
+    </div>
+
+    <!-- Upload Playlist Modal -->
+    <div class="modal fade" id="uploadPlaylistModal" tabindex="-1" aria-labelledby="uploadPlaylistModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadPlaylistModalLabel">Upload New Playlist</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="{% url 'upload_playlist' %}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_name" class="form-label">Playlist Name</label>
+                            {{ upload_form.name }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_image" class="form-label">Playlist Image</label>
+                            {{ upload_form.image }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_tracks" class="form-label">Track Files</label>
+                            <input type="file" name="tracks" multiple class="form-control" required id="id_tracks">
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_default_track_icon" class="form-label">Default Track Icon (Optional)</label>
+                            {{ upload_form.default_track_icon }}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Upload Playlist</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 {% endblock %}

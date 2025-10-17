@@ -9,7 +9,7 @@ from django.contrib.auth import login, authenticate
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from .forms import TrackForm, PlaylistForm, BookmarkForm
+from .forms import TrackForm, PlaylistForm, BookmarkForm, PlaylistUploadForm
 from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed, Bookmark
 from mutagen import File as MutagenFile
 from django.utils import timezone
@@ -208,19 +208,21 @@ def download_track(request, track_id):
 @login_required
 def playlist_list(request):
     playlists = Playlist.objects.filter(owner=request.user)
-    return render(request, 'player/playlist_list.html', {'playlists': playlists})
+    form = PlaylistUploadForm()
+    return render(request, 'player/playlist_list.html', {'playlists': playlists, 'upload_form': form})
 
 @login_required
 def create_playlist(request):
     if request.method == 'POST':
-        form = PlaylistForm(request.POST, request.FILES)
+        form = PlaylistForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             playlist = form.save(commit=False)
             playlist.owner = request.user
             playlist.save()
+            form.save_m2m()
             return redirect('playlist_list')
     else:
-        form = PlaylistForm()
+        form = PlaylistForm(user=request.user)
     return render(request, 'player/create_playlist.html', {'form': form})
 
 @login_required
@@ -261,13 +263,62 @@ def playlist_detail(request, playlist_id):
 def edit_playlist(request, playlist_id):
     playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
     if request.method == 'POST':
-        form = PlaylistForm(request.POST, request.FILES, instance=playlist)
+        form = PlaylistForm(request.POST, request.FILES, instance=playlist, user=request.user)
         if form.is_valid():
-            form.save()
+            playlist = form.save(commit=False)
+            playlist.owner = request.user
+            playlist.save()
+
+            form.save_m2m()
+
             return redirect('playlist_list')
     else:
-        form = PlaylistForm(instance=playlist)
+        form = PlaylistForm(instance=playlist, user=request.user)
     return render(request, 'player/edit_playlist.html', {'form': form, 'playlist': playlist})
+
+@login_required
+def upload_playlist(request):
+    if request.method == 'POST':
+        form = PlaylistUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            playlist = Playlist.objects.create(
+                name=form.cleaned_data['name'],
+                owner=request.user,
+                image=form.cleaned_data['image']
+            )
+
+            uploaded_tracks = request.FILES.getlist('tracks')
+            default_icon = form.cleaned_data['default_track_icon']
+
+            for order, audio_file in enumerate(uploaded_tracks):
+                track_name = os.path.splitext(audio_file.name)[0]
+
+                try:
+                    audio = MutagenFile(audio_file)
+                    duration = audio.info.length if audio else 0
+                except Exception:
+                    duration = 0
+                finally:
+                    audio_file.seek(0)
+
+                track = Track.objects.create(
+                    name=track_name,
+                    owner=request.user,
+                    file=audio_file,
+                    icon=default_icon,
+                    duration=duration,
+                    file_size=audio_file.size,
+                    type='song'
+                )
+
+                PlaylistItem.objects.create(
+                    playlist=playlist,
+                    track=track,
+                    order=order
+                )
+
+            return redirect('playlist_list')
+    return redirect('playlist_list')
 
 @login_required
 def delete_playlist(request, playlist_id):
