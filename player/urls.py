@@ -7,7 +7,6 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('register/', views.register, name='register'),
     path('upload/', views.upload_track, name='upload_track'),
-    path('track/<int:track_id>/delete/', views.delete_track, name='delete_track'),
     path('api/track/<int:track_id>/delete/', views.delete_track_api, name='delete_track_api'),
     path('track/<int:track_id>/edit/', views.edit_track, name='edit_track'),
     path('track/<int:track_id>/download/', views.download_track, name='download_track'),
