@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const playlistFilter = document.getElementById('playlist-filter');
     const sortSelect = document.getElementById('sort-select');
     const trackListContainer = document.getElementById('track-list-container');
+    const paginationContainer = document.getElementById('pagination-container');
 
     function fetchTracks(page) {
         const search = searchInput.value;
@@ -111,36 +112,30 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             trackListContainer.innerHTML = data.track_html;
             paginationContainer.innerHTML = data.pagination_html;
-            addPaginationListener();
             addDeleteModalListener();
         })
         .catch(error => console.error('Error fetching tracks:', error));
     }
 
-    function addPaginationListener() {
-        const paginationContainer = document.getElementById('pagination-container');
-        if (paginationContainer) {
-            paginationContainer.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = e.target;
-                if (target.tagName === 'A' && !target.closest('.disabled') && !target.closest('.active')) {
-                    const url = new URL(target.href);
-                    const page = url.searchParams.get('page');
-                    fetchTracks(page);
-                }
-            });
+    // Use event delegation for pagination links
+    document.addEventListener('click', function(e) {
+        // Find the closest ancestor anchor tag within the pagination container
+        const target = e.target.closest('#pagination-container a');
+
+        if (target && !target.closest('.disabled') && !target.closest('.active')) {
+            e.preventDefault(); // Prevent default navigation
+            const url = new URL(target.href);
+            const page = url.searchParams.get('page') || '1';
+            fetchTracks(page);
         }
-    }
+    });
 
     // Attach event listeners to filter controls
     const filterControls = [searchInput, artistFilter, playlistFilter, sortSelect];
     filterControls.forEach(control => {
-        control.addEventListener('change', () => fetchTracks(1)); // Use 'change' to avoid excessive requests
+        control.addEventListener('change', () => fetchTracks(1)); // Use 'change' for select/checkbox
     });
-    searchInput.addEventListener('input', () => fetchTracks(1)); // Except for search, use 'input' for real-time feedback
-
-    // Initial fetch to load tracks based on URL params
-    fetchTracks(new URLSearchParams(window.location.search).get('page') || 1);
+    searchInput.addEventListener('input', () => fetchTracks(1)); // Use 'input' for real-time feedback
 
     addDeleteModalListener();
     addDeleteConfirmationListener();

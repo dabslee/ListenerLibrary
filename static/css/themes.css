@@ -222,47 +222,60 @@ html[data-theme="dark-blue"] .modal-content {
 }
 
 /* --- Pagination --- */
-html[data-theme="dark"] .pagination .page-link {
+html[data-theme="dark"] #pagination-container .page-link {
     background-color: #343a40;
     border-color: #495057;
     color: #f8f9fa;
 }
-html[data-theme="dark"] .pagination .page-item.disabled .page-link {
+html[data-theme="dark"] #pagination-container .page-link:hover {
+    background-color: #495057;
+    color: #f8f9fa;
+}
+html[data-theme="dark"] #pagination-container .page-item.disabled .page-link {
     background-color: #343a40;
     border-color: #495057;
     color: #6c757d;
 }
-html[data-theme="dark"] .pagination .page-item.active .page-link {
+html[data-theme="dark"] #pagination-container .page-item.active .page-link {
     background-color: #0d6efd;
     border-color: #0d6efd;
+    color: white;
 }
 
-html[data-theme="light-blue"] .pagination .page-link {
+html[data-theme="light-blue"] #pagination-container .page-link {
     background-color: #e3f2fd;
     border-color: #90caf9;
     color: #0d47a1;
 }
-html[data-theme="light-blue"] .pagination .page-item.disabled .page-link {
+html[data-theme="light-blue"] #pagination-container .page-link:hover {
+    background-color: #bbdefb;
+}
+html[data-theme="light-blue"] #pagination-container .page-item.disabled .page-link {
     background-color: #e3f2fd;
     border-color: #90caf9;
     color: #6c757d;
 }
-html[data-theme="light-blue"] .pagination .page-item.active .page-link {
+html[data-theme="light-blue"] #pagination-container .page-item.active .page-link {
     background-color: #1976d2;
     border-color: #1976d2;
+    color: white;
 }
 
-html[data-theme="dark-blue"] .pagination .page-link {
+html[data-theme="dark-blue"] #pagination-container .page-link {
     background-color: #1b263b;
     border-color: #415a77;
     color: #e0e1dd;
 }
-html[data-theme="dark-blue"] .pagination .page-item.disabled .page-link {
+html[data-theme="dark-blue"] #pagination-container .page-link:hover {
+    background-color: #415a77;
+}
+html[data-theme="dark-blue"] #pagination-container .page-item.disabled .page-link {
     background-color: #1b263b;
     border-color: #415a77;
     color: #6c757d;
 }
-html[data-theme="dark-blue"] .pagination .page-item.active .page-link {
+html[data-theme="dark-blue"] #pagination-container .page-item.active .page-link {
     background-color: #415a77;
     border-color: #415a77;
+    color: white;
 }
