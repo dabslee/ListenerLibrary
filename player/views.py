@@ -394,16 +394,19 @@ def add_track_to_playlist(request):
     track = get_object_or_404(Track, pk=track_id, owner=request.user)
     playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
 
-    # Check if the item already exists
-    if PlaylistItem.objects.filter(playlist=playlist, track=track).exists():
-        return JsonResponse({'status': 'warning', 'message': 'Track already in playlist.'})
+    playlist_item = PlaylistItem.objects.filter(playlist=playlist, track=track).first()
 
-    # Get the highest order value and add 1
-    max_order = playlist.playlistitem_set.aggregate(models.Max('order'))['order__max'] or 0
+    if playlist_item:
+        playlist_item.delete()
+        action = 'removed'
+        message = f'Removed {track.name} from {playlist.name}.'
+    else:
+        max_order = playlist.playlistitem_set.aggregate(models.Max('order'))['order__max'] or -1
+        PlaylistItem.objects.create(playlist=playlist, track=track, order=max_order + 1)
+        action = 'added'
+        message = f'Added {track.name} to {playlist.name}.'
 
-    PlaylistItem.objects.create(playlist=playlist, track=track, order=max_order + 1)
-
-    return JsonResponse({'status': 'success', 'message': f'Added {track.name} to {playlist.name}.'})
+    return JsonResponse({'status': 'success', 'action': action, 'message': message})
 
 @login_required
 @require_POST
