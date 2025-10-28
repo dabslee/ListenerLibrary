@@ -8,7 +8,7 @@
         <h2>Your Tracks</h2>
         <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
             {% with percentage=storage_percentage|default:0 %}
-            <span class="small fst-italic {% if storage_percentage > 75 %}text-danger{% else %}text-muted{% endif %}">{{ storage_usage }} / {{ storage_limit }} ({{ percentage|floatformat:1 }}%) used.</span>
+            <span class="small fst-italic {% if storage_percentage > 75 %}text-danger{% else %}text-muted{% endif %}">{{ storage_usage|format_bytes }} / {{ storage_limit|format_bytes }} ({{ percentage|floatformat:1 }}%) used.</span>
             {% endwith %}
             <a href="{% url 'upload_track' %}" class="btn btn-primary"><i class="fas fa-upload me-1"></i> Upload Track</a>
         </div>
@@ -111,8 +111,25 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             trackListContainer.innerHTML = data.track_html;
             paginationContainer.innerHTML = data.pagination_html;
+            addPaginationListener();
+            addDeleteModalListener();
         })
         .catch(error => console.error('Error fetching tracks:', error));
+    }
+
+    function addPaginationListener() {
+        const paginationContainer = document.getElementById('pagination-container');
+        if (paginationContainer) {
+            paginationContainer.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = e.target;
+                if (target.tagName === 'A' && !target.closest('.disabled') && !target.closest('.active')) {
+                    const url = new URL(target.href);
+                    const page = url.searchParams.get('page');
+                    fetchTracks(page);
+                }
+            });
+        }
     }
 
     // Attach event listeners to filter controls
@@ -125,29 +142,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial fetch to load tracks based on URL params
     fetchTracks(new URLSearchParams(window.location.search).get('page') || 1);
 
-    paginationContainer.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = e.target;
-        if (target.tagName === 'A' && !target.closest('.disabled') && !target.closest('.active')) {
-            const url = new URL(target.href);
-            const page = url.searchParams.get('page');
-            fetchTracks(page);
-        }
-    });
+    addDeleteModalListener();
+    addDeleteConfirmationListener();
 
-    const deleteTrackModal = document.getElementById('deleteTrackModal');
+    function addDeleteModalListener() {
+        const deleteTrackModal = document.getElementById('deleteTrackModal');
+        if (deleteTrackModal) {
+            deleteTrackModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                trackIdToDelete = button.dataset.trackId;
+                const trackName = button.dataset.trackName;
+                trackNameToDelete.textContent = trackName;
+            });
+        }
+    }
     const trackNameToDelete = document.getElementById('track-name-to-delete');
-    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
     let trackIdToDelete = null;
 
-    deleteTrackModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        trackIdToDelete = button.dataset.trackId;
-        const trackName = button.dataset.trackName;
-        trackNameToDelete.textContent = trackName;
-    });
-
-    confirmDeleteBtn.addEventListener('click', function () {
+    function addDeleteConfirmationListener() {
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', function () {
         if (!trackIdToDelete) return;
 
         const url = `/api/track/${trackIdToDelete}/delete/`;
@@ -178,31 +193,10 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
             showToast('An error occurred.', 'error');
         });
-    });
-
-    const paginationContainer = document.getElementById('pagination-container');
-
-    if (paginationContainer) {
-        paginationContainer.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = e.target;
-            if (target.tagName === 'A' && !target.closest('.disabled') && !target.closest('.active')) {
-                const url = target.getAttribute('href');
-                fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    trackListContainer.innerHTML = data.html;
-                    // Re-run the filter/sort to update the list of allTracks
-                    filterAndSortTracks();
-                })
-                .catch(error => console.error('Error fetching page:', error));
-            }
-        });
+            });
+        }
     }
+
 });
 
 function addToPlaylist(trackId, playlistId, element) {
