@@ -109,3 +109,13 @@ button:disabled {
     min-width: 45px;
     text-align: center;
 }
+
+.btn-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 12px;
+    line-height: 1.42857;
+}

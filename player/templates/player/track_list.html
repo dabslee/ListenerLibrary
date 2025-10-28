@@ -8,27 +8,11 @@
         <h2>Your Tracks</h2>
         <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
             {% with percentage=storage_percentage|default:0 %}
-            <span class="small fst-italic {% if storage_percentage > 75 %}text-danger{% else %}text-muted{% endif %}">{{ storage_usage|format_bytes }} / {{ storage_limit|format_bytes }} ({{ percentage|floatformat:1 }}%) used.</span>
+            <span class="small fst-italic {% if storage_percentage > 75 %}text-danger{% else %}text-muted{% endif %}">{{ storage_usage }} / {{ storage_limit }} ({{ percentage|floatformat:1 }}%) used.</span>
             {% endwith %}
             <a href="{% url 'upload_track' %}" class="btn btn-primary"><i class="fas fa-upload me-1"></i> Upload Track</a>
         </div>
     </div>
-
-    <!-- <div class="card bg-light mb-4">
-        <div class="card-body">
-            <h5>Storage Status</h5>
-            {% with percentage=storage_percentage|default:0 %}
-            <div class="progress mb-2" style="height: 20px;">
-                <div class="progress-bar {% if percentage > 95 %}bg-danger{% elif percentage > 80 %}bg-warning{% endif %}" role="progressbar" style="width: {{ percentage }}%;" aria-valuenow="{{ percentage }}" aria-valuemin="0" aria-valuemax="100">
-                    {{ percentage|floatformat:1 }}%
-                </div>
-            </div>
-            <p class="text-muted mb-0">
-                You've used {{ storage_usage|format_bytes }} of {{ storage_limit|format_bytes }}
-            </p>
-            {% endwith %}
-        </div>
-    </div> -->
 
     <div class="card bg-light mb-4">
         <div class="card-body">
@@ -78,15 +62,9 @@
         {% include 'player/partials/track_list_items.html' with tracks=tracks.object_list playlists=playlists %}
     </div>
 
-    {% if tracks.has_next %}
-        <div class="d-flex justify-content-center mt-4">
-            <button id="load-more-btn" class="btn btn-outline-primary">Load More</button>
-        </div>
-    {% endif %}
-
-    <div id="no-more-tracks" class="text-center text-muted mt-4" style="display: none;">
-        No more tracks to load.
-    </div>
+    <nav id="pagination-container" aria-label="Page navigation">
+        {% include 'player/partials/pagination.html' with tracks=tracks %}
+    </nav>
 
 {% endblock %}
 
@@ -116,67 +94,46 @@ document.addEventListener('DOMContentLoaded', function() {
     const playlistFilter = document.getElementById('playlist-filter');
     const sortSelect = document.getElementById('sort-select');
     const trackListContainer = document.getElementById('track-list-container');
-    const allTracks = Array.from(trackListContainer.querySelectorAll('.track-item'));
-    const noResultsMessage = document.querySelector('.alert-info');
 
-    function filterAndSortTracks() {
-        const searchQuery = searchInput.value.toLowerCase().trim();
-        const selectedArtist = artistFilter.value.toLowerCase();
-        const selectedPlaylistId = playlistFilter.value;
-        const sortOption = sortSelect.value;
+    function fetchTracks(page) {
+        const search = searchInput.value;
+        const artist = artistFilter.value;
+        const playlist = playlistFilter.value;
+        const sort = sortSelect.value;
 
-        let visibleTracks = [];
+        const params = new URLSearchParams({ page, search, artist, playlist, sort });
+        const url = `?${params.toString()}`;
 
-        allTracks.forEach(track => {
-            const trackName = track.dataset.name;
-            const trackArtist = track.dataset.artist;
-            const trackPlaylists = track.dataset.playlists.split(',').filter(Boolean);
-
-            const searchMatch = !searchQuery || trackName.includes(searchQuery) || trackArtist.includes(searchQuery);
-            const artistMatch = !selectedArtist || trackArtist === selectedArtist;
-            const playlistMatch = !selectedPlaylistId || trackPlaylists.includes(selectedPlaylistId);
-
-            if (searchMatch && artistMatch && playlistMatch) {
-                track.classList.remove('d-none');
-                visibleTracks.push(track);
-            } else {
-                track.classList.add('d-none');
-            }
-        });
-
-        // Sort the visible tracks
-        visibleTracks.sort((a, b) => {
-            if (sortOption === 'name') {
-                return a.dataset.name.localeCompare(b.dataset.name);
-            } else if (sortOption === 'last_played') {
-                const dateA = a.dataset.lastPlayed ? new Date(a.dataset.lastPlayed) : null;
-                const dateB = b.dataset.lastPlayed ? new Date(b.dataset.lastPlayed) : null;
-
-                if (!dateA && !dateB) return 0;
-                if (!dateA) return 1; // Unplayed tracks go to the end
-                if (!dateB) return -1; // Played tracks come first
-                return dateB - dateA; // Sort descending
-            }
-            return 0;
-        });
-
-        // Re-append sorted tracks to the container
-        visibleTracks.forEach(track => trackListContainer.appendChild(track));
-
-        // Show/hide the "no results" message
-        if (noResultsMessage) {
-            noResultsMessage.style.display = visibleTracks.length > 0 ? 'none' : 'block';
-        }
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            trackListContainer.innerHTML = data.track_html;
+            paginationContainer.innerHTML = data.pagination_html;
+        })
+        .catch(error => console.error('Error fetching tracks:', error));
     }
 
-    // Attach event listeners
-    searchInput.addEventListener('input', filterAndSortTracks);
-    artistFilter.addEventListener('change', filterAndSortTracks);
-    playlistFilter.addEventListener('change', filterAndSortTracks);
-    sortSelect.addEventListener('change', filterAndSortTracks);
+    // Attach event listeners to filter controls
+    const filterControls = [searchInput, artistFilter, playlistFilter, sortSelect];
+    filterControls.forEach(control => {
+        control.addEventListener('change', () => fetchTracks(1)); // Use 'change' to avoid excessive requests
+    });
+    searchInput.addEventListener('input', () => fetchTracks(1)); // Except for search, use 'input' for real-time feedback
 
-    // Initial filter on page load to respect any pre-filled values from URL params
-    filterAndSortTracks();
+    // Initial fetch to load tracks based on URL params
+    fetchTracks(new URLSearchParams(window.location.search).get('page') || 1);
+
+    paginationContainer.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = e.target;
+        if (target.tagName === 'A' && !target.closest('.disabled') && !target.closest('.active')) {
+            const url = new URL(target.href);
+            const page = url.searchParams.get('page');
+            fetchTracks(page);
+        }
+    });
 
     const deleteTrackModal = document.getElementById('deleteTrackModal');
     const trackNameToDelete = document.getElementById('track-name-to-delete');
@@ -223,31 +180,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    let page = 1;
-    const loadMoreBtn = document.getElementById('load-more-btn');
-    const trackListContainer = document.getElementById('track-list-container');
-    const noMoreTracks = document.getElementById('no-more-tracks');
+    const paginationContainer = document.getElementById('pagination-container');
 
-    if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', function () {
-            page++;
-            const url = `?page=${page}`;
-            fetch(url, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.html) {
-                    trackListContainer.insertAdjacentHTML('beforeend', data.html);
-                }
-                if (!data.has_next) {
-                    loadMoreBtn.style.display = 'none';
-                    noMoreTracks.style.display = 'block';
-                }
-            })
-            .catch(error => console.error('Error loading more tracks:', error));
+    if (paginationContainer) {
+        paginationContainer.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = e.target;
+            if (target.tagName === 'A' && !target.closest('.disabled') && !target.closest('.active')) {
+                const url = target.getAttribute('href');
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    trackListContainer.innerHTML = data.html;
+                    // Re-run the filter/sort to update the list of allTracks
+                    filterAndSortTracks();
+                })
+                .catch(error => console.error('Error fetching page:', error));
+            }
         });
     }
 });

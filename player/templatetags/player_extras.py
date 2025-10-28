@@ -14,15 +14,3 @@ def format_duration(seconds):
         return f'{hours}:{minutes:02}:{seconds:02}'
     return f'{minutes}:{seconds:02}'
 
-@register.filter
-def format_bytes(value):
-    if value is None:
-        return "0 B"
-    if value < 1024:
-        return f"{value} B"
-    elif value < 1024**2:
-        return f"{value/1024:.2f} KB"
-    elif value < 1024**3:
-        return f"{value/1024**2:.2f} MB"
-    else:
-        return f"{value/1024**3:.2f} GB"

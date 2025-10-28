@@ -27,43 +27,41 @@
                 </div>
             </div>
         </div>
-        <div class="d-flex flex-column align-items-end" style="min-width: 150px;">
-            <div class="mb-2">
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" id="track-menu-{{ track.id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="track-menu-{{ track.id }}">
-                        <li><h6 class="dropdown-header">Add to Playlist</h6></li>
-                        {% for p in playlists %}
-                            <li data-playlist-id="{{ p.id }}">
-                                <a class="dropdown-item d-flex justify-content-between align-items-center" href="#" onclick="event.stopPropagation(); addToPlaylist({{ track.id }}, {{ p.id }}, this)">
-                                    {{ p.name }}
-                                    {% if p in track.playlists.all %}
-                                        <i class="fas fa-check text-success ms-2"></i>
-                                    {% endif %}
-                                </a>
-                            </li>
-                        {% empty %}
-                            <li><span class="dropdown-item disabled">No playlists yet</span></li>
-                        {% endfor %}
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'download_track' track.id %}"><i class="fas fa-download me-2"></i> Download</a></li>
-                        <li><a class="dropdown-item" href="{% url 'edit_track' track.id %}"><i class="fas fa-edit me-2"></i> Edit</a></li>
-                        <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteTrackModal" data-track-id="{{ track.id }}" data-track-name="{{ track.name|escapejs }}"><i class="fas fa-trash me-2"></i> Delete</a></li>
-                    </ul>
-                </div>
-            </div>
+        <div class="d-flex align-items-center">
             {% if track.type == 'podcast' %}
-                <div class="w-100">
+                <div class="w-100 me-2">
                     <div class="progress" style="height: 5px;">
-                        <div class="progress-bar" role="progressbar" style="width: {{ track.progress_percentage|default:0 }}%;" aria-valuenow="{{ track.progress_percentage|default:0 }}" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="progress-bar" role="progressbar" style="width: {{ track.progress_percentage|default:0 }}%;" aria-valuenow="{{ track.progress_percentage|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                     <div class="d-flex justify-content-end">
                         <small class="text-muted podcast-progress-time">{{ track.position|format_duration }} / {{ track.duration|format_duration }}</small>
                     </div>
                 </div>
             {% endif %}
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary btn-circle" type="button" id="track-menu-{{ track.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="track-menu-{{ track.id }}">
+                    <li><h6 class="dropdown-header">Add to Playlist</h6></li>
+                    {% for p in playlists %}
+                        <li data-playlist-id="{{ p.id }}">
+                            <a class="dropdown-item d-flex justify-content-between align-items-center" href="#" onclick="event.stopPropagation(); addToPlaylist({{ track.id }}, {{ p.id }}, this)">
+                                {{ p.name }}
+                                {% if p in track.playlists.all %}
+                                    <i class="fas fa-check text-success ms-2"></i>
+                                {% endif %}
+                            </a>
+                        </li>
+                    {% empty %}
+                        <li><span class="dropdown-item disabled">No playlists yet</span></li>
+                    {% endfor %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'download_track' track.id %}"><i class="fas fa-download me-2"></i> Download</a></li>
+                    <li><a class="dropdown-item" href="{% url 'edit_track' track.id %}"><i class="fas fa-edit me-2"></i> Edit</a></li>
+                    <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteTrackModal" data-track-id="{{ track.id }}" data-track-name="{{ track.name|escapejs }}"><i class="fas fa-trash me-2"></i> Delete</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 {% endfor %}

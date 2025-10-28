@@ -26,11 +26,34 @@ from django.conf import settings
 def track_list(request):
     # Initial query
     tracks_query = Track.objects.filter(owner=request.user).prefetch_related('playlists')
+
+    # Filtering
+    search_query = request.GET.get('search')
+    selected_artist = request.GET.get('artist')
+    selected_playlist_id = request.GET.get('playlist')
+    sort_option = request.GET.get('sort', 'name')
+
+    if search_query:
+        tracks_query = tracks_query.filter(
+            models.Q(name__icontains=search_query) |
+            models.Q(artist__icontains=search_query)
+        )
+    if selected_artist:
+        tracks_query = tracks_query.filter(artist=selected_artist)
+    if selected_playlist_id:
+        tracks_query = tracks_query.filter(playlists__id=selected_playlist_id)
+
+    # Sorting
+    if sort_option == 'last_played':
+        tracks_query = tracks_query.order_by('-usertracklastplayed__last_played')
+    else: # 'name'
+        tracks_query = tracks_query.order_by('name')
+
     playlists = Playlist.objects.filter(owner=request.user)
-    artists = tracks_query.values_list('artist', flat=True).distinct().order_by('artist')
+    artists = Track.objects.filter(owner=request.user).values_list('artist', flat=True).distinct().order_by('artist')
 
     # Pagination
-    paginator = Paginator(tracks_query, 20) # Show 20 tracks per page
+    paginator = Paginator(tracks_query, 20)  # Show 20 tracks per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -53,11 +76,15 @@ def track_list(request):
             track.progress_percentage = 0
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        html = render_to_string(
+        track_html = render_to_string(
             'player/partials/track_list_items.html',
             {'tracks': page_obj.object_list, 'playlists': playlists}
         )
-        return JsonResponse({'html': html, 'has_next': page_obj.has_next()})
+        pagination_html = render_to_string(
+            'player/partials/pagination.html',
+            {'tracks': page_obj}
+        )
+        return JsonResponse({'track_html': track_html, 'pagination_html': pagination_html})
 
     # Calculate storage usage for initial load
     current_storage_usage = tracks_query.aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
@@ -159,15 +186,6 @@ def upload_track(request):
         form = TrackForm()
 
     return render(request, 'player/upload_track.html', {'form': form})
-
-@login_required
-def delete_track(request, track_id):
-    track = get_object_or_404(Track, pk=track_id, owner=request.user)
-    if request.method == 'POST':
-        track.delete()
-        return redirect('track_list')
-    return render(request, 'player/delete_track.html', {'track': track})
-
 
 @login_required
 @require_POST
