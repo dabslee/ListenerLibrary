@@ -84,11 +84,11 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': secrets.db_name,
+            'NAME': 'listener_library',
             'USER': secrets.db_user,
-            'PASSWORD': secrets.db_password,
+            'PASSWORD': secrets.db_pass,
             'HOST': secrets.db_host,
-            'PORT': secrets.db_port,
+            'PORT': '5432',
         }
     }
 
