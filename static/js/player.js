@@ -69,8 +69,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) return "0:00";
-        const minutes = Math.floor(seconds / 60);
+
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
         const secs = Math.floor(seconds % 60);
+
+        if (hours > 0) {
+            return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        }
         return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
