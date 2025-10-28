@@ -53,7 +53,7 @@ def track_list(request):
     artists = Track.objects.filter(owner=request.user).values_list('artist', flat=True).distinct().order_by('artist')
 
     # Pagination
-    paginator = Paginator(tracks_query, 20)  # Show 20 tracks per page
+    paginator = Paginator(tracks_query, 10)  # Show 10 tracks per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
