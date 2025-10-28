@@ -94,6 +94,10 @@ button:disabled {
         order: 2;
     }
 
+    .pagination {
+        flex-wrap: wrap;
+    }
+
     #seek-bar {
         flex-grow: 1;
         margin: 0 10px;
