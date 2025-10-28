@@ -558,7 +558,17 @@ def create_bookmark(request):
             bookmark.shuffle = playback_state.shuffle
             bookmark.playlist = playback_state.playlist
             bookmark.save()
-            return JsonResponse({'status': 'success', 'message': 'Bookmark created.'})
+
+            bookmark_item_html = render_to_string(
+                'player/partials/bookmark_item.html',
+                {'bookmark': bookmark}
+            )
+
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Bookmark created.',
+                'bookmark_item_html': bookmark_item_html,
+            })
         except UserPlaybackState.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'No current playback state to bookmark.'}, status=404)
     else:

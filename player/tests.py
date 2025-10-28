@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from .models import Track, UserPlaybackState, PodcastProgress
+from .models import Track, UserPlaybackState, PodcastProgress, Bookmark
 
 
 class PlayerTestCase(TestCase):
@@ -166,3 +166,38 @@ class PlayerTestCase(TestCase):
         self.assertEqual(response.get('Content-Length'), str(len(expected_content)))
         self.assertEqual(response.get('Content-Range'), f'bytes 6-10/{len(self.track_content)}')
         self.assertEqual(b"".join(response.streaming_content), expected_content)
+
+    def test_create_bookmark_with_playback_state(self):
+        """Test creating a bookmark when a playback state exists."""
+        # First, create a playback state
+        UserPlaybackState.objects.create(
+            user=self.user,
+            track=self.track,
+            last_played_position=123.45
+        )
+
+        url = reverse('create_bookmark')
+        bookmark_name = "My Test Bookmark"
+        response = self.client.post(url, {'name': bookmark_name})
+
+        self.assertEqual(response.status_code, 200)
+        json_response = response.json()
+        self.assertEqual(json_response['status'], 'success')
+        self.assertIn('bookmark_item_html', json_response)
+
+        # Verify the bookmark was created in the database
+        bookmark = Bookmark.objects.get(user=self.user, name=bookmark_name)
+        self.assertEqual(bookmark.track, self.track)
+        self.assertEqual(bookmark.position, 123.45)
+        self.assertIn(bookmark_name, json_response['bookmark_item_html'])
+
+    def test_create_bookmark_no_playback_state(self):
+        """Test creating a bookmark when no playback state exists."""
+        url = reverse('create_bookmark')
+        response = self.client.post(url, {'name': 'Will Not Be Created'})
+
+        self.assertEqual(response.status_code, 404)
+        json_response = response.json()
+        self.assertEqual(json_response['status'], 'error')
+        self.assertEqual(json_response['message'], 'No current playback state to bookmark.')
+        self.assertFalse(Bookmark.objects.filter(user=self.user).exists())
