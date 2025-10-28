@@ -385,6 +385,40 @@ document.addEventListener('DOMContentLoaded', function() {
         updatePlaylistUI();
     };
 
+    window.loadPlaybackState = function(state) {
+        currentTrack = {
+            id: state.trackId,
+            name: state.trackName,
+            artist: state.trackArtist,
+            icon_url: state.trackIcon,
+            stream_url: state.trackStreamUrl,
+            type: state.trackType,
+            position: state.position
+        };
+        isShuffle = state.shuffle;
+        currentPlaylist = state.playlist;
+
+        if (currentPlaylist && currentPlaylist.id) {
+            fetch(`/api/playlist_tracks/${currentPlaylist.id}/`)
+                .then(response => response.json())
+                .then(tracks => {
+                    originalPlaylist = tracks;
+                    shuffledPlaylist = shuffleArray(originalPlaylist);
+                    playQueue = isShuffle ? shuffledPlaylist : originalPlaylist;
+                    currentTrackIndex = playQueue.findIndex(t => t.id === currentTrack.id);
+                    loadAndPlayTrack(currentTrack);
+                    updatePlaylistUI();
+                });
+        } else {
+            originalPlaylist = [];
+            shuffledPlaylist = [];
+            playQueue = [];
+            currentTrackIndex = -1;
+            loadAndPlayTrack(currentTrack);
+            updatePlaylistUI();
+        }
+    };
+
     // --- EVENT LISTENERS ---
     playPauseBtn.addEventListener('click', () => {
         if (audioPlayer.src && audioPlayer.readyState > 0) {

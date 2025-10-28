@@ -201,3 +201,25 @@ class PlayerTestCase(TestCase):
         self.assertEqual(json_response['status'], 'error')
         self.assertEqual(json_response['message'], 'No current playback state to bookmark.')
         self.assertFalse(Bookmark.objects.filter(user=self.user).exists())
+
+    def test_play_bookmark_view_response(self):
+        """Test that the play_bookmark view returns the full playback state."""
+        bookmark = Bookmark.objects.create(
+            user=self.user,
+            name="Test Bookmark",
+            track=self.track,
+            position=99.9
+        )
+
+        url = reverse('play_bookmark', args=[bookmark.id])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+
+        json_response = response.json()
+        self.assertEqual(json_response['status'], 'success')
+        self.assertIn('playback_state', json_response)
+
+        playback_state = json_response['playback_state']
+        self.assertEqual(playback_state['trackId'], self.track.id)
+        self.assertEqual(playback_state['trackName'], self.track.name)
+        self.assertEqual(playback_state['position'], 99.9)

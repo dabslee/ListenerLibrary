@@ -532,7 +532,11 @@ def delete_bookmark(request, bookmark_id):
 @require_POST
 def play_bookmark(request, bookmark_id):
     bookmark = get_object_or_404(Bookmark, pk=bookmark_id, user=request.user)
-    UserPlaybackState.objects.update_or_create(
+
+    if not bookmark.track:
+        return JsonResponse({'status': 'error', 'message': 'Bookmark has no associated track.'}, status=404)
+
+    playback_state, _ = UserPlaybackState.objects.update_or_create(
         user=request.user,
         defaults={
             'track': bookmark.track,
@@ -541,7 +545,27 @@ def play_bookmark(request, bookmark_id):
             'shuffle': bookmark.shuffle,
         }
     )
-    return JsonResponse({'status': 'success', 'message': 'Playback state updated.'})
+
+    playback_state_data = {
+        'trackId': playback_state.track.id,
+        'trackName': playback_state.track.name,
+        'trackArtist': playback_state.track.artist or 'No artist',
+        'trackIcon': request.build_absolute_uri(playback_state.track.icon.url) if playback_state.track.icon else None,
+        'trackStreamUrl': request.build_absolute_uri(reverse('stream_track', args=[playback_state.track.id])),
+        'position': playback_state.last_played_position,
+        'trackType': playback_state.track.type,
+        'playlist': {
+            'id': playback_state.playlist.id,
+            'name': playback_state.playlist.name
+        } if playback_state.playlist else None,
+        'shuffle': playback_state.shuffle,
+    }
+
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Playback state updated.',
+        'playback_state': playback_state_data
+    })
 
 
 @login_required

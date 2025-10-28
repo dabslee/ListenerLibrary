@@ -209,7 +209,16 @@
                     .then(data => {
                         if (data.status === 'success') {
                             showToast(data.message, 'success');
-                            location.reload();
+                            if (window.loadPlaybackState && data.playback_state) {
+                                window.loadPlaybackState(data.playback_state);
+                            } else {
+                                location.reload();
+                            }
+                            const bookmarksModal = document.getElementById('bookmarks-modal');
+                            const modalInstance = bootstrap.Modal.getInstance(bookmarksModal);
+                            if (modalInstance) {
+                                modalInstance.hide();
+                            }
                         } else {
                             showToast(data.message || 'An error occurred.', 'error');
                         }
