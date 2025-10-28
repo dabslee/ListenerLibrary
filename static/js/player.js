@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
         audioPlayer.src = track.stream_url;
         audioPlayer.load();
 
-        audioPlayer.addEventListener('canplay', () => {
+        audioPlayer.addEventListener('loadedmetadata', () => {
             if (isFinite(audioPlayer.duration)) {
                 audioPlayer.currentTime = startPosition;
             }

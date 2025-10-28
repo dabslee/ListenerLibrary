@@ -211,8 +211,6 @@
                             showToast(data.message, 'success');
                             if (window.loadPlaybackState && data.playback_state) {
                                 window.loadPlaybackState(data.playback_state);
-                            } else {
-                                location.reload();
                             }
                             const bookmarksModal = document.getElementById('bookmarks-modal');
                             const modalInstance = bootstrap.Modal.getInstance(bookmarksModal);
