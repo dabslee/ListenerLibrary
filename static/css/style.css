@@ -104,3 +104,8 @@ button:disabled {
         justify-content: center;
     }
 }
+
+.time-display {
+    min-width: 45px;
+    text-align: center;
+}

@@ -2,7 +2,9 @@ import os
 import re
 import mimetypes
 import logging
+from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, authenticate
@@ -22,31 +24,26 @@ from django.conf import settings
 
 @login_required
 def track_list(request):
-    # Fetch all tracks and related data efficiently.
-    tracks_query = Track.objects.filter(owner=request.user).order_by('name').prefetch_related('playlists')
+    # Initial query
+    tracks_query = Track.objects.filter(owner=request.user).prefetch_related('playlists')
     playlists = Playlist.objects.filter(owner=request.user)
     artists = tracks_query.values_list('artist', flat=True).distinct().order_by('artist')
 
-    # Calculate storage usage
-    current_storage_usage = tracks_query.aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
-    user_storage_limit_bytes = request.user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
-    storage_percentage = (current_storage_usage / user_storage_limit_bytes) * 100 if user_storage_limit_bytes > 0 else 0
+    # Pagination
+    paginator = Paginator(tracks_query, 20) # Show 20 tracks per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
-    tracks = list(tracks_query)
-    track_ids = [t.id for t in tracks]
-
-    # Get all necessary related data in a few queries
+    # Prepare track data with progress and last played info
+    track_ids = [t.id for t in page_obj.object_list]
     podcast_progress = PodcastProgress.objects.filter(user=request.user, track_id__in=track_ids)
     podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
-
     last_played_data = UserTrackLastPlayed.objects.filter(user=request.user, track_id__in=track_ids)
     last_played_map = {lp.track_id: lp.last_played for lp in last_played_data}
 
-    # Attach the extra data to each track object
-    for track in tracks:
+    for track in page_obj.object_list:
         last_played_dt = last_played_map.get(track.id)
         track.last_played_iso = last_played_dt.isoformat() if last_played_dt else ''
-
         if track.type == 'podcast':
             position = podcast_progress_map.get(track.id, 0)
             track.position = position
@@ -55,11 +52,23 @@ def track_list(request):
             track.position = 0
             track.progress_percentage = 0
 
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            'player/partials/track_list_items.html',
+            {'tracks': page_obj.object_list, 'playlists': playlists}
+        )
+        return JsonResponse({'html': html, 'has_next': page_obj.has_next()})
+
+    # Calculate storage usage for initial load
+    current_storage_usage = tracks_query.aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+    user_storage_limit_bytes = request.user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
+    storage_percentage = (current_storage_usage / user_storage_limit_bytes) * 100 if user_storage_limit_bytes > 0 else 0
+
     bookmarks = Bookmark.objects.filter(user=request.user).order_by('name')
     bookmark_form = BookmarkForm()
 
     context = {
-        'tracks': tracks,
+        'tracks': page_obj,
         'playlists': playlists,
         'artists': artists,
         'selected_playlist_id': int(request.GET.get('playlist')) if request.GET.get('playlist') else None,
@@ -158,6 +167,17 @@ def delete_track(request, track_id):
         track.delete()
         return redirect('track_list')
     return render(request, 'player/delete_track.html', {'track': track})
+
+
+@login_required
+@require_POST
+def delete_track_api(request, track_id):
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    try:
+        track.delete()
+        return JsonResponse({'status': 'success', 'message': f'Track "{track.name}" deleted successfully.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @login_required
 def edit_track(request, track_id):
