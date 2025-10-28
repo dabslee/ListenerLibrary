@@ -47,7 +47,14 @@
                                 {% endif %}
                             </div>
                             <div class="mb-2 d-lg-none d-block flex-grow-1 text-end">
-                                <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})" title="Remove from Playlist">
+                                <button class="btn btn-outline-danger btn-sm"
+                                        onclick="event.stopPropagation();"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#removeTrackModal"
+                                        data-playlist-id="{{ playlist.id }}"
+                                        data-track-id="{{ item.track.id }}"
+                                        data-track-name="{{ item.track.name|escapejs }}"
+                                        title="Remove from Playlist">
                                     <i class="fas fa-xmark"></i>
                                 </button>
                             </div>
@@ -64,7 +71,14 @@
                                 </div>
                             {% endif %}
                             <div class="mb-2 d-lg-block d-none">
-                                <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); removeFromPlaylist({{ playlist.id }}, {{ item.track.id }})" title="Remove from Playlist">
+                                <button class="btn btn-outline-danger btn-sm"
+                                        onclick="event.stopPropagation();"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#removeTrackModal"
+                                        data-playlist-id="{{ playlist.id }}"
+                                        data-track-id="{{ item.track.id }}"
+                                        data-track-name="{{ item.track.name|escapejs }}"
+                                        title="Remove from Playlist">
                                     <i class="fas fa-xmark"></i>
                                 </button>
                             </div>
@@ -74,6 +88,25 @@
                     <li class="list-group-item">This playlist is empty.</li>
                 {% endfor %}
             </ul>
+        </div>
+    </div>
+
+    <!-- Remove Track Modal -->
+    <div class="modal fade" id="removeTrackModal" tabindex="-1" aria-labelledby="removeTrackModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="removeTrackModalLabel">Confirm Removal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to remove the track "<strong id="track-name-to-remove"></strong>" from this playlist?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-remove-btn">Remove</button>
+                </div>
+            </div>
         </div>
     </div>
 {% endblock %}
@@ -94,45 +127,61 @@ let playlistData = [
     {% endfor %}
 ];
 
-function removeFromPlaylist(playlistId, trackId) {
-    if (!confirm('Are you sure you want to remove this track from the playlist?')) {
-        return;
-    }
-
-    const url = `/playlists/remove_track/${playlistId}/${trackId}/`;
-    const csrfToken = '{{ csrf_token }}';
-
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': csrfToken,
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Remove the item from the DOM
-            const itemToRemove = document.getElementById(`playlist-item-${trackId}`);
-            if (itemToRemove) {
-                itemToRemove.remove();
-            }
-            // Update the playlistData array to reflect the change
-            playlistData = playlistData.filter(track => track.id !== trackId);
-            showToast(data.message, 'success');
-        } else {
-            showToast('Error: ' + data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('An error occurred while removing the track.', 'error');
-    });
-}
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    let playlistIdToRemove = null;
+    let trackIdToRemove = null;
+
+    const removeTrackModal = document.getElementById('removeTrackModal');
+    if (removeTrackModal) {
+        removeTrackModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            playlistIdToRemove = button.dataset.playlistId;
+            trackIdToRemove = button.dataset.trackId;
+            const trackName = button.dataset.trackName;
+            const trackNameElement = document.getElementById('track-name-to-remove');
+            trackNameElement.textContent = trackName;
+        });
+    }
+
+    const confirmRemoveBtn = document.getElementById('confirm-remove-btn');
+    if (confirmRemoveBtn) {
+        confirmRemoveBtn.addEventListener('click', function () {
+            if (!playlistIdToRemove || !trackIdToRemove) return;
+
+            const url = `/playlists/remove_track/${playlistIdToRemove}/${trackIdToRemove}/`;
+            const csrfToken = '{{ csrf_token }}';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const itemToRemove = document.getElementById(`playlist-item-${trackIdToRemove}`);
+                    if (itemToRemove) {
+                        itemToRemove.remove();
+                    }
+                    playlistData = playlistData.filter(track => track.id !== parseInt(trackIdToRemove));
+                    showToast(data.message, 'success');
+                    const modalInstance = bootstrap.Modal.getInstance(removeTrackModal);
+                    modalInstance.hide();
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred while removing the track.', 'error');
+            });
+        });
+    }
     const playAllBtn = document.getElementById('play-all-btn');
     if (playAllBtn) {
         playAllBtn.addEventListener('click', function(e) {

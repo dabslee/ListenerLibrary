@@ -194,10 +194,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 
-function addToPlaylist(trackId, playlistId, element) {
+function toggleTrackInPlaylist(trackId, playlistId, element) {
     const url = "{% url 'add_track_to_playlist' %}";
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}';
-
 
     const formData = new FormData();
     formData.append('track_id', trackId);
@@ -205,26 +204,28 @@ function addToPlaylist(trackId, playlistId, element) {
 
     fetch(url, {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': csrfToken,
-        },
+        headers: { 'X-CSRFToken': csrfToken },
         body: formData,
     })
     .then(response => response.json())
     .then(data => {
-        showToast(data.message, data.status);
-        if (data.status === 'success') {
-            // Add checkmark if it doesn't exist
+        showToast(data.message, 'success');
+        if (data.action === 'added') {
             if (!element.querySelector('.fa-check')) {
                 const checkmark = document.createElement('i');
                 checkmark.className = 'fas fa-check text-success ms-2';
                 element.appendChild(checkmark);
             }
+        } else if (data.action === 'removed') {
+            const checkmark = element.querySelector('.fa-check');
+            if (checkmark) {
+                checkmark.remove();
+            }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('An error occurred while adding the track.', 'error');
+        showToast('An error occurred.', 'error');
     });
 }
 </script>
