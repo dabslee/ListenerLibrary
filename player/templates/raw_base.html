@@ -288,9 +288,13 @@
                     .then(data => {
                         if (data.status === 'success') {
                             showToast(data.message, 'success');
-                            // Optionally, refresh the bookmark list dynamically
-                            // For simplicity, we'll just reload the page for now
-                            location.reload();
+                            const bookmarkList = document.getElementById('bookmark-list');
+                            const noBookmarksMessage = bookmarkList.querySelector('p.text-muted');
+                            if (noBookmarksMessage) {
+                                noBookmarksMessage.remove();
+                            }
+                            bookmarkList.insertAdjacentHTML('beforeend', data.bookmark_item_html);
+                            createBookmarkForm.reset();
                         } else {
                             showToast(data.message || 'An error occurred.', 'error');
                         }
