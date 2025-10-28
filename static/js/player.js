@@ -305,11 +305,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function loadAndPlayTrack(track) {
         if (!track) return;
-        if (currentTrack && !audioPlayer.paused) savePlaybackState();
+
+        // If a track is currently playing, save its state before switching
+        if (currentTrack && !audioPlayer.paused) {
+            savePlaybackState();
+        }
 
         currentTrack = track;
         if (saveInterval) clearInterval(saveInterval);
 
+        // Update UI elements immediately
         playerTrackName.textContent = track.name;
         playerTrackArtist.textContent = track.artist || 'No artist';
         const iconUrl = (track.icon_url && track.icon_url !== 'None' && track.icon_url !== 'null') ? track.icon_url : '';
@@ -318,21 +323,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
         updateMediaSession();
 
-        let startPosition = 0;
-        if (track.type === 'podcast') {
-            startPosition = track.position || podcastPositions[track.id] || 0;
-            podcastPositions[track.id] = startPosition;
-        }
+        // Always use the position from the track object if available (for both songs and podcasts)
+        const startPosition = track.position || 0;
 
+        // --- More Robust Playback Logic ---
+        // 1. Stop any current playback and reset the player's state
+        audioPlayer.pause();
+        audioPlayer.removeAttribute('src'); // Fully disassociate the old source
+        audioPlayer.load(); // This resets the media element
+
+        // 2. Set the new source
         audioPlayer.src = track.stream_url;
+
+        // 3. Load the new source
         audioPlayer.load();
 
-        audioPlayer.addEventListener('loadedmetadata', () => {
-            if (isFinite(audioPlayer.duration)) {
+        // 4. Play and then seek
+        // The play() method returns a promise. We wait for it to resolve before seeking.
+        // This is the most reliable way to ensure the player is ready for a seek command.
+        const playPromise = audioPlayer.play();
+        if (playPromise !== undefined) {
+            playPromise.then(_ => {
+                // Playback has started, now it's safe to seek.
                 audioPlayer.currentTime = startPosition;
-            }
-            audioPlayer.play().catch(e => console.error("Playback error:", e));
-        }, { once: true });
+            }).catch(error => {
+                // Autoplay was prevented.
+                console.error("Playback was prevented:", error);
+                // We can't automatically start, but we can still set the time for when the user clicks play.
+                audioPlayer.currentTime = startPosition;
+            });
+        }
     }
 
     function playNextTrack() {
