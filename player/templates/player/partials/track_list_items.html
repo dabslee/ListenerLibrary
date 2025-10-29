@@ -38,6 +38,11 @@
                     </div>
                 </div>
             {% endif %}
+            <button class="btn btn-sm btn-outline-secondary btn-circle me-2 offline-toggle-btn"
+                    data-track-id="{{ track.id }}"
+                    data-offline-status="{% if track.is_offline %}offline{% else %}not_offline{% endif %}">
+                <i class="fas fa-cloud-download-alt"></i>
+            </button>
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline-secondary btn-circle" type="button" id="track-menu-{{ track.id }}" data-bs-toggle="dropdown" aria-expanded="false" data-testid="kebab-menu-{{ track.id }}">
                     <i class="fas fa-ellipsis-v"></i>

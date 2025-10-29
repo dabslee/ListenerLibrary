@@ -1,11 +1,16 @@
 from django.urls import path
 from . import views
 
+from django.contrib.auth import views as auth_views
+
 urlpatterns = [
     path('', views.track_list, name='track_list'),
     path('play_focus/', views.play_focus, name='play_focus'),
     path('profile/', views.profile, name='profile'),
     path('register/', views.register, name='register'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
     path('upload/', views.upload_track, name='upload_track'),
     path('api/track/<int:track_id>/delete/', views.delete_track_api, name='delete_track_api'),
     path('track/<int:track_id>/edit/', views.edit_track, name='edit_track'),
@@ -29,4 +34,7 @@ urlpatterns = [
     path('bookmark/create/', views.create_bookmark, name='create_bookmark'),
     path('bookmark/<int:bookmark_id>/play/', views.play_bookmark, name='play_bookmark'),
     path('bookmark/<int:bookmark_id>/delete/', views.delete_bookmark, name='delete_bookmark'),
+
+    # Offline URLs
+    path('api/toggle_offline/', views.toggle_offline, name='toggle_offline'),
 ]

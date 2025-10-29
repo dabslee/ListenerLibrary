@@ -66,6 +66,14 @@
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <div class="dropdown-item">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="offline-mode-toggle">
+                                            <label class="form-check-label" for="offline-mode-toggle">Offline Mode</label>
+                                        </div>
+                                    </div>
+                                </li>
                                 <li><a class="dropdown-item" href="{% url 'password_reset' %}">Reset password</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
                             </ul>
@@ -315,5 +323,19 @@
         });
     </script>
     {% block extra_js %}{% endblock %}
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("{% static 'js/service-worker.js' %}")
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>

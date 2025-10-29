@@ -211,25 +211,52 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!currentTrack || isNaN(audioPlayer.currentTime)) return;
 
         const position = audioPlayer.currentTime;
-        if (currentTrack.type === 'podcast') {
-            podcastPositions[currentTrack.id] = position;
-        }
+        const playbackState = {
+            track_id: currentTrack.id,
+            position: position,
+            playlist_id: currentPlaylist ? currentPlaylist.id : null,
+            shuffle: isShuffle,
+            timestamp: new Date().toISOString()
+        };
 
-        try {
-            await fetch('/api/update_playback_state/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-                body: JSON.stringify({
-                    track_id: currentTrack.id,
-                    position: position,
-                    playlist_id: currentPlaylist ? currentPlaylist.id : null,
-                    shuffle: isShuffle
-                })
-            });
-        } catch (error) {
-            console.error('Error saving playback state:', error);
+        if (navigator.onLine) {
+            try {
+                await fetch('/api/update_playback_state/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                    body: JSON.stringify(playbackState)
+                });
+            } catch (error) {
+                console.error('Error saving playback state:', error);
+                // If the network request fails, save locally
+                localStorage.setItem('offlinePlaybackState', JSON.stringify(playbackState));
+            }
+        } else {
+            localStorage.setItem('offlinePlaybackState', JSON.stringify(playbackState));
         }
     }
+
+    async function syncOfflinePlaybackState() {
+        const offlineStateJSON = localStorage.getItem('offlinePlaybackState');
+        if (offlineStateJSON) {
+            const offlineState = JSON.parse(offlineStateJSON);
+            try {
+                const response = await fetch('/api/update_playback_state/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                    body: JSON.stringify(offlineState)
+                });
+                if (response.ok) {
+                    localStorage.removeItem('offlinePlaybackState');
+                    showToast('Offline playback progress synced.', 'success');
+                }
+            } catch (error) {
+                console.error('Error syncing offline playback state:', error);
+            }
+        }
+    }
+
+    window.addEventListener('online', syncOfflinePlaybackState);
 
     // --- UI UPDATE ---
     function updatePlaylistUI() {
@@ -709,4 +736,152 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initializePlayer();
     initializeSleepTimer();
+
+    // --- OFFLINE LOGIC ---
+    function updateOfflineIcon(button, status) {
+        const icon = button.querySelector('i');
+        button.dataset.offlineStatus = status;
+
+        switch (status) {
+            case 'offline':
+                icon.className = 'fas fa-cloud text-success';
+                button.title = 'Remove from offline';
+                break;
+            case 'downloading':
+                icon.className = 'fas fa-spinner fa-spin';
+                button.title = 'Downloading...';
+                button.disabled = true;
+                break;
+            case 'not_offline':
+            default:
+                icon.className = 'fas fa-cloud-download-alt';
+                button.title = 'Save for offline';
+                button.disabled = false;
+                break;
+        }
+    }
+
+    async function toggleOfflineStatus(button) {
+        const trackId = button.dataset.trackId;
+        const initialStatus = button.dataset.offlineStatus;
+        const trackUrl = `/track/${trackId}/stream/`;
+
+        // Optimistically update UI to downloading
+        updateOfflineIcon(button, 'downloading');
+
+        try {
+            // Request persistent storage if not already granted
+            if (navigator.storage && navigator.storage.persist) {
+                const isPersisted = await navigator.storage.persisted();
+                if (!isPersisted) {
+                    const result = await navigator.storage.persist();
+                    if (!result) {
+                        showToast("Could not get permission for persistent storage. Offline tracks might be cleared by the browser.", "warning");
+                    }
+                }
+            }
+
+            const response = await fetch('/api/toggle_offline/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                body: JSON.stringify({ track_id: trackId })
+            });
+
+            if (!response.ok) throw new Error('Server error');
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                if (navigator.serviceWorker.controller) {
+                    const action = data.action === 'added' ? 'cache-track' : 'delete-track';
+                    navigator.serviceWorker.controller.postMessage({
+                        action: action,
+                        url: trackUrl
+                    });
+                }
+            } else {
+                throw new Error(data.message || 'Failed to toggle status');
+            }
+        } catch (error) {
+            console.error('Error toggling offline status:', error);
+            showToast('An error occurred during the process.', 'error');
+            updateOfflineIcon(button, initialStatus); // Revert on error
+        }
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', event => {
+            const { status, url } = event.data;
+            const trackId = url.match(/track\/(\d+)\/stream/)[1];
+            const button = document.querySelector(`.offline-toggle-btn[data-track-id="${trackId}"]`);
+            if (!button) return;
+
+            if (status === 'success') {
+                const currentStatus = button.dataset.offlineStatus;
+                // 'downloading' implies the next state is 'offline'
+                const newStatus = (currentStatus === 'downloading') ? 'offline' : 'not_offline';
+                updateOfflineIcon(button, newStatus);
+                showToast(`Track successfully made ${newStatus === 'offline' ? 'available offline' : 'online only'}.`, 'success');
+            } else {
+                showToast('Failed to update offline status.', 'error');
+                // Revert to the state before 'downloading'
+                const previousStatus = button.dataset.offlineStatus === 'downloading' ? 'not_offline' : 'offline';
+                updateOfflineIcon(button, previousStatus);
+            }
+        });
+    }
+
+    // Use event delegation for offline buttons
+    document.addEventListener('click', function(e) {
+        const button = e.target.closest('.offline-toggle-btn');
+        if (button) {
+            e.stopPropagation();
+            toggleOfflineStatus(button);
+        }
+    });
+
+    // Initial icon setup
+    document.querySelectorAll('.offline-toggle-btn').forEach(button => {
+        updateOfflineIcon(button, button.dataset.offlineStatus);
+    });
+
+    // --- OFFLINE MODE TOGGLE ---
+    const offlineModeToggle = document.getElementById('offline-mode-toggle');
+
+    function setOfflineMode(isOffline) {
+        document.body.classList.toggle('offline-mode', isOffline);
+
+        // Filter track list
+        document.querySelectorAll('.track-item').forEach(item => {
+            const button = item.querySelector('.offline-toggle-btn');
+            const isTrackOffline = button && button.dataset.offlineStatus === 'offline';
+            if (isOffline && !isTrackOffline) {
+                item.classList.add('d-none'); // Hide non-offline tracks
+            } else {
+                item.classList.remove('d-none');
+            }
+        });
+
+        // Disable/enable server-dependent UI elements
+        const elementsToDisable = [
+            document.getElementById('search-input'),
+            document.getElementById('artist-filter'),
+            document.getElementById('playlist-filter'),
+            document.getElementById('sort-select'),
+            ...document.querySelectorAll('.playlist-management-btn'), // Add this class to playlist buttons
+            ...document.querySelectorAll('.bookmark-management-btn'), // Add this class to bookmark buttons
+        ];
+
+        elementsToDisable.forEach(el => {
+            if (el) el.disabled = isOffline;
+        });
+
+        showToast(isOffline ? 'Offline mode enabled.' : 'Offline mode disabled.', 'info');
+    }
+
+    if (offlineModeToggle) {
+        offlineModeToggle.addEventListener('change', function() {
+            setOfflineMode(this.checked);
+        });
+    }
 });

@@ -47,6 +47,7 @@ class UserPlaybackState(models.Model):
     last_played_position = models.FloatField(default=0)
     shuffle = models.BooleanField(default=False)
     playlist = models.ForeignKey('Playlist', on_delete=models.SET_NULL, null=True, blank=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username}'s Playback State"
@@ -109,3 +110,14 @@ class Bookmark(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s bookmark: {self.name}"
+
+
+class UserOfflineTrack(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    track = models.ForeignKey(Track, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('user', 'track')
+
+    def __str__(self):
+        return f"{self.user.username}'s offline track: {self.track.name}"

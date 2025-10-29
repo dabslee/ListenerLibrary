@@ -6,13 +6,13 @@ from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, authenticate
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from .forms import TrackForm, PlaylistForm, BookmarkForm, PlaylistUploadForm
-from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed, Bookmark
+from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed, Bookmark, UserOfflineTrack
 from mutagen import File as MutagenFile
 from django.utils import timezone
 from django.db import models
@@ -63,8 +63,10 @@ def track_list(request):
     podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
     last_played_data = UserTrackLastPlayed.objects.filter(user=request.user, track_id__in=track_ids)
     last_played_map = {lp.track_id: lp.last_played for lp in last_played_data}
+    offline_tracks = set(UserOfflineTrack.objects.filter(user=request.user, track_id__in=track_ids).values_list('track_id', flat=True))
 
     for track in page_obj.object_list:
+        track.is_offline = track.id in offline_tracks
         last_played_dt = last_played_map.get(track.id)
         track.last_played_iso = last_played_dt.isoformat() if last_played_dt else ''
         if track.type == 'podcast':
@@ -122,21 +124,65 @@ from .models import UserProfile
 from django.db.models import Sum
 
 def register(request):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         total_storage_limit = UserProfile.objects.aggregate(Sum('storage_limit_gb'))['storage_limit_gb__sum'] or 0
         if total_storage_limit + settings.DEFAULT_USER_STORAGE_LIMIT_GB > settings.STORAGE_LIMIT_GB_TOTAL:
-            form.add_error(None, "Registration is currently disabled due to storage limitations.")
+            error_message = "Registration is currently disabled due to storage limitations."
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': error_message}, status=400)
+            form.add_error(None, error_message)
             return render(request, 'registration/register.html', {'form': form})
 
         if form.is_valid():
             user = form.save()
-            # UserProfile is created automatically by the post_save signal
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            if is_ajax:
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Registration successful!',
+                    'user': {
+                        'id': user.id,
+                        'username': user.username
+                    }
+                })
             return redirect('track_list')
+        else:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
     else:
         form = UserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
+
+
+def login_view(request):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                if is_ajax:
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Login successful!',
+                        'user': {
+                            'id': user.id,
+                            'username': user.username
+                        }
+                    })
+                return redirect('track_list')
+        else:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
+    else:
+        form = AuthenticationForm()
+    return render(request, 'registration/login.html', {'form': form})
+
 
 @login_required
 def upload_track(request):
@@ -447,6 +493,9 @@ class RangeFileWrapper:
             self.remaining -= len(data)
             return data
 
+from datetime import datetime
+from django.utils.dateparse import parse_datetime
+
 @csrf_exempt
 @require_POST
 @login_required
@@ -457,42 +506,47 @@ def update_playback_state(request):
         position = data.get('position')
         playlist_id = data.get('playlist_id')
         shuffle = data.get('shuffle', False)
+        timestamp_str = data.get('timestamp')
 
         if track_id is None or position is None:
             return JsonResponse({'status': 'error', 'message': 'Missing track_id or position'}, status=400)
 
         track = get_object_or_404(Track, pk=track_id, owner=request.user)
-        playlist = None
-        if playlist_id:
-            playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+        playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user) if playlist_id else None
 
-        # Update general playback state
-        UserPlaybackState.objects.update_or_create(
-            user=request.user,
-            defaults={
-                'track': track,
-                'last_played_position': position,
-                'playlist': playlist,
-                'shuffle': shuffle,
-            }
-        )
+        # Get or create the playback state
+        playback_state, created = UserPlaybackState.objects.get_or_create(user=request.user, defaults={'track': track})
 
-        # Update last played timestamp
-        UserTrackLastPlayed.objects.update_or_create(
-            user=request.user,
-            track=track,
-            defaults={'last_played': timezone.now()}
-        )
+        # Compare timestamps
+        client_timestamp = parse_datetime(timestamp_str) if timestamp_str else timezone.now()
+        server_timestamp = playback_state.last_updated
 
-        # Update podcast-specific progress
-        if track.type == 'podcast':
-            PodcastProgress.objects.update_or_create(
+        if created or not server_timestamp or client_timestamp >= server_timestamp:
+            # Update general playback state
+            playback_state.track = track
+            playback_state.last_played_position = position
+            playback_state.playlist = playlist
+            playback_state.shuffle = shuffle
+            playback_state.save() # This will update the last_updated field
+
+            # Update last played timestamp
+            UserTrackLastPlayed.objects.update_or_create(
                 user=request.user,
                 track=track,
-                defaults={'position': position}
+                defaults={'last_played': timezone.now()}
             )
 
-        return JsonResponse({'status': 'success'})
+            # Update podcast-specific progress
+            if track.type == 'podcast':
+                PodcastProgress.objects.update_or_create(
+                    user=request.user,
+                    track=track,
+                    defaults={'position': position}
+                )
+            return JsonResponse({'status': 'success', 'message': 'Playback state updated.'})
+        else:
+            return JsonResponse({'status': 'success', 'message': 'Server state is newer, no update performed.'})
+
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
     except Exception as e:
@@ -509,6 +563,8 @@ def playlist_tracks_api(request, playlist_id):
     podcast_progress = PodcastProgress.objects.filter(user=request.user, track_id__in=track_ids)
     podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
 
+    offline_tracks = set(UserOfflineTrack.objects.filter(user=request.user, track_id__in=track_ids).values_list('track_id', flat=True))
+
     tracks_data = []
     for item in items:
         track = item.track
@@ -519,7 +575,8 @@ def playlist_tracks_api(request, playlist_id):
             'stream_url': request.build_absolute_uri(reverse('stream_track', args=[track.id])),
             'icon_url': request.build_absolute_uri(track.icon.url) if track.icon else None,
             'type': track.type,
-            'position': podcast_progress_map.get(track.id, 0)
+            'position': podcast_progress_map.get(track.id, 0),
+            'is_offline': track.id in offline_tracks
         })
     return JsonResponse(tracks_data, safe=False)
 
@@ -635,3 +692,27 @@ def stream_track(request, track_id):
 
     response['Accept-Ranges'] = 'bytes'
     return response
+
+
+@login_required
+@require_POST
+def toggle_offline(request):
+    try:
+        data = json.loads(request.body)
+        track_id = data.get('track_id')
+        track = get_object_or_404(Track, pk=track_id, owner=request.user)
+
+        offline_track, created = UserOfflineTrack.objects.get_or_create(user=request.user, track=track)
+
+        if created:
+            action = 'added'
+        else:
+            offline_track.delete()
+            action = 'removed'
+
+        return JsonResponse({'status': 'success', 'action': action})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logging.exception("Error toggling offline status")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
