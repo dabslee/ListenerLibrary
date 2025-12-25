@@ -1,5 +1,6 @@
-Django==5.2.7
-Pillow==10.4.0
-mutagen==1.47.0
-pydub==0.25.1
-gunicorn==23.0.0
+Django
+Pillow
+mutagen
+pydub
+gunicorn
+psycopg2
