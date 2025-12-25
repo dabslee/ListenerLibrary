@@ -1,7 +1,9 @@
 from django.core.management.base import BaseCommand
 from player.models import Track
 from mutagen import File as MutagenFile
+from pydub import AudioSegment
 import os
+import logging
 
 class Command(BaseCommand):
     help = 'Fixes zero duration for tracks that have a valid file size'
@@ -17,19 +19,47 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.WARNING(f'Track {track.id} has no file associated.'))
                         continue
 
+                    file_path = track.file.path
                     # Ensure the file exists on disk
-                    if not os.path.exists(track.file.path):
-                        self.stdout.write(self.style.WARNING(f'File for track {track.id} not found at {track.file.path}.'))
+                    if not os.path.exists(file_path):
+                        self.stdout.write(self.style.WARNING(f'File for track {track.id} not found at {file_path}.'))
                         continue
 
-                    audio = MutagenFile(track.file.path)
-                    if audio and audio.info.length:
-                        track.duration = audio.info.length
+                    duration = 0
+
+                    # Try Mutagen with path
+                    try:
+                        audio = MutagenFile(file_path)
+                        if audio and audio.info.length:
+                            duration = audio.info.length
+                    except Exception as e:
+                        self.stdout.write(self.style.WARNING(f'Mutagen failed on path for track {track.id}: {e}'))
+
+                    # Try Mutagen with file object if path failed
+                    if not duration:
+                        try:
+                            with open(file_path, 'rb') as f:
+                                audio = MutagenFile(f)
+                                if audio and audio.info.length:
+                                    duration = audio.info.length
+                        except Exception as e:
+                             self.stdout.write(self.style.WARNING(f'Mutagen failed on file object for track {track.id}: {e}'))
+
+                    # Try Pydub as fallback
+                    if not duration:
+                        try:
+                            audio = AudioSegment.from_file(file_path)
+                            duration = len(audio) / 1000.0
+                        except Exception as e:
+                            self.stdout.write(self.style.WARNING(f'Pydub failed for track {track.id}: {e}'))
+
+                    if duration > 0:
+                        track.duration = duration
                         track.save()
                         count += 1
                         self.stdout.write(self.style.SUCCESS(f'Updated duration for track {track.id}: {track.duration}s'))
                     else:
-                        self.stdout.write(self.style.WARNING(f'Could not determine duration for track {track.id}'))
+                        self.stdout.write(self.style.WARNING(f'Could not determine duration for track {track.id} (path: {file_path})'))
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Error processing track {track.id}: {str(e)}'))
 
