@@ -4,3 +4,4 @@ mutagen
 pydub
 gunicorn
 psycopg2
+pyaudioop

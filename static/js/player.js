@@ -326,8 +326,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Always use the position from the track object if available (for both songs and podcasts)
         let startPosition = track.position || 0;
 
-        // Reset to start if the track is finished or very close to the end (1 second threshold)
-        if (track.duration && track.duration > 0 && (track.duration - startPosition <= 1)) {
+        // Reset to start if the track is finished or very close to the end
+        if (track.duration && track.duration > 0 && (track.duration - startPosition <= 10)) { 
             startPosition = 0;
         }
 
