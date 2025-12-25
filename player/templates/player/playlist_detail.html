@@ -122,7 +122,8 @@ let playlistData = [
         stream_url: "{% url 'stream_track' item.track.id %}",
         icon_url: {% if item.track.icon %}"{{ item.track.icon.url }}"{% else %}null{% endif %},
         type: "{{ item.track.type }}",
-        position: {{ item.track.position|default:0 }}
+        position: {{ item.track.position|default:0 }},
+        duration: {{ item.track.duration|default:0 }}
     },
     {% endfor %}
 ];
