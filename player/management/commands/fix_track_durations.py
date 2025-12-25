@@ -3,7 +3,7 @@ from player.models import Track
 from mutagen import File as MutagenFile
 from pydub import AudioSegment
 import os
-import logging
+import subprocess
 
 class Command(BaseCommand):
     help = 'Fixes zero duration for tracks that have a valid file size'
@@ -45,7 +45,18 @@ class Command(BaseCommand):
                         except Exception as e:
                              self.stdout.write(self.style.WARNING(f'Mutagen failed on file object for track {track.id}: {e}'))
 
-                    # Try Pydub as fallback
+                    # Try ffprobe as a fast fallback before pydub
+                    if not duration:
+                        try:
+                            result = subprocess.check_output(
+                                ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file_path],
+                                stderr=subprocess.STDOUT
+                            )
+                            duration = float(result.decode().strip())
+                        except Exception as e:
+                             self.stdout.write(self.style.WARNING(f'FFprobe failed for track {track.id}: {e}'))
+
+                    # Try Pydub as last resort
                     if not duration:
                         try:
                             audio = AudioSegment.from_file(file_path)
