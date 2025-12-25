@@ -324,7 +324,12 @@ document.addEventListener('DOMContentLoaded', function() {
         updateMediaSession();
 
         // Always use the position from the track object if available (for both songs and podcasts)
-        const startPosition = track.position || 0;
+        let startPosition = track.position || 0;
+
+        // Reset to start if the track is finished or very close to the end (1 second threshold)
+        if (track.duration && track.duration > 0 && (track.duration - startPosition <= 1)) {
+            startPosition = 0;
+        }
 
         // --- More Robust Playback Logic ---
         // 1. Stop any current playback and reset the player's state
@@ -370,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- GLOBAL FUNCTIONS ---
-    window.playTrack = function(trackUrl, trackName, trackArtist, iconUrl, trackId, trackType, position = 0) {
+    window.playTrack = function(trackUrl, trackName, trackArtist, iconUrl, trackId, trackType, position = 0, duration = 0) {
         currentPlaylist = null;
         playQueue = [];
         originalPlaylist = [];
@@ -386,7 +391,8 @@ document.addEventListener('DOMContentLoaded', function() {
             icon_url: iconUrl,
             stream_url: trackUrl,
             type: trackType,
-            position: position
+            position: position,
+            duration: duration
         };
         loadAndPlayTrack(trackObject);
     };
@@ -413,7 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
             icon_url: state.trackIcon,
             stream_url: state.trackStreamUrl,
             type: state.trackType,
-            position: state.position
+            position: state.position,
+            duration: state.duration || 0
         };
         isShuffle = state.shuffle;
         currentPlaylist = state.playlist;
@@ -602,7 +609,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon_url: state.trackIcon,
                 stream_url: state.trackStreamUrl,
                 type: state.trackType,
-                position: state.position
+                position: state.position,
+                duration: state.duration || 0
             };
             isShuffle = state.shuffle;
             currentPlaylist = state.playlist;

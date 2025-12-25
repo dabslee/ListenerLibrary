@@ -519,6 +519,7 @@ def playlist_tracks_api(request, playlist_id):
             'stream_url': request.build_absolute_uri(reverse('stream_track', args=[track.id])),
             'icon_url': request.build_absolute_uri(track.icon.url) if track.icon else None,
             'type': track.type,
+            'duration': track.duration,
             'position': podcast_progress_map.get(track.id, 0)
         })
     return JsonResponse(tracks_data, safe=False)

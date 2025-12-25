@@ -176,6 +176,7 @@
         "trackIcon": "{% if playback_state.track.icon %}{{ playback_state.track.icon.url }}{% else %}{% endif %}",
         "trackStreamUrl": "{% url 'stream_track' playback_state.track.id %}",
         "position": {{ playback_state.last_played_position }},
+        "duration": {{ playback_state.track.duration|default:0 }},
         "trackType": "{{ playback_state.track.type }}",
         "playlist": {% if playback_state.playlist %}{
             "id": {{ playback_state.playlist.id }},

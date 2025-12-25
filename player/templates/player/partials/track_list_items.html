@@ -7,7 +7,7 @@
          data-artist="{{ track.artist|lower|default:'' }}"
          data-last-played="{{ track.last_played_iso|default:'' }}"
          data-playlists="{% for p in track.playlists.all %}{{ p.id }},{% endfor %}">
-        <div class="flex-grow-1" onclick="playTrack('{% url 'stream_track' track.id %}', '{{ track.name|escapejs }}', '{{ track.artist|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}', {{ track.id }}, '{{ track.type }}', {{ track.position|default:0 }});">
+        <div class="flex-grow-1" onclick="playTrack('{% url 'stream_track' track.id %}', '{{ track.name|escapejs }}', '{{ track.artist|escapejs }}', '{% if track.icon %}{{ track.icon.url }}{% endif %}', {{ track.id }}, '{{ track.type }}', {{ track.position|default:0 }}, {{ track.duration|default:0 }});">
             <div class="d-flex align-items-center">
                 {% if track.icon %}
                     <img src="{{ track.icon.url }}" alt="{{ track.name }}" style="width: 50px; height: 50px; border-radius: 5px; object-fit: cover;" class="me-3">
