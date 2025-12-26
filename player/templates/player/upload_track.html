@@ -42,7 +42,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById('id_file');
-    const nameInput = document.getElementById('id_name');
+    const form = document.getElementById('upload-form');
+    const nameInput = form.querySelector("#id_name");
 
     if (fileInput && nameInput) {
         fileInput.addEventListener('change', function () {
@@ -58,7 +59,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const form = document.getElementById('upload-form');
     const uploadButton = document.getElementById('upload-button');
     const progressContainer = document.getElementById('progress-container');
     const progressBar = document.getElementById('progress-bar');
