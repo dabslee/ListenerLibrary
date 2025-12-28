@@ -169,6 +169,12 @@ html[data-theme="dark-blue"] .toast .toast-body {
     color: #e0e1dd;
 }
 
+/* --- Transcript Lines --- */
+.transcript-line { color: #212529; }
+html[data-theme="dark"] .transcript-line { color: #f8f9fa; }
+html[data-theme="light-blue"] .transcript-line { color: #0d47a1; }
+html[data-theme="dark-blue"] .transcript-line { color: #e0e1dd; }
+
 
 /* --- Outline Buttons --- */
 html[data-theme="dark"] .btn-outline-secondary { color: #adb5bd; border-color: #adb5bd; }
@@ -247,6 +253,11 @@ html[data-theme="dark"] .table {
     color: #f8f9fa;
     border-color: #495057;
 }
+html[data-theme="dark"] .table thead th {
+    background-color: #343a40;
+    color: #f8f9fa;
+    border-color: #495057;
+}
 html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
     color: #f8f9fa;
     background-color: rgba(255, 255, 255, 0.05);
@@ -260,12 +271,22 @@ html[data-theme="light-blue"] .table {
     color: #0d47a1;
     border-color: #90caf9;
 }
+html[data-theme="light-blue"] .table thead th {
+    background-color: #bbdefb;
+    color: #0d47a1;
+    border-color: #90caf9;
+}
 html[data-theme="light-blue"] .table-striped > tbody > tr:nth-of-type(odd) > * {
     color: #0d47a1;
     background-color: rgba(13, 71, 161, 0.05);
 }
 
 html[data-theme="dark-blue"] .table {
+    color: #e0e1dd;
+    border-color: #415a77;
+}
+html[data-theme="dark-blue"] .table thead th {
+    background-color: #1b263b;
     color: #e0e1dd;
     border-color: #415a77;
 }
@@ -277,6 +298,8 @@ html[data-theme="dark-blue"] .table-striped > tbody > tr:nth-of-type(even) > * {
     color: #e0e1dd;
     background-color: transparent;
 }
+
+/* Pagination container */
 
 html[data-theme="light-blue"] #pagination-container .page-link {
     background-color: #e3f2fd;
