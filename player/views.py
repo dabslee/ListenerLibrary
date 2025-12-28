@@ -29,17 +29,19 @@ def track_list(request):
     tracks_query = Track.objects.filter(owner=request.user).prefetch_related('playlists')
 
     # Filtering
-    search_query = request.GET.get('search')
+    title_search_query = request.GET.get('search_title') or request.GET.get('search')
+    transcript_search_query = request.GET.get('search_transcript')
     selected_artist = request.GET.get('artist')
     selected_playlist_id = request.GET.get('playlist')
     sort_option = request.GET.get('sort', 'name')
 
-    if search_query:
+    if title_search_query:
         tracks_query = tracks_query.filter(
-            models.Q(name__icontains=search_query) |
-            models.Q(artist__icontains=search_query) |
-            models.Q(transcript__content__icontains=search_query)
+            models.Q(name__icontains=title_search_query) |
+            models.Q(artist__icontains=title_search_query)
         )
+    if transcript_search_query:
+        tracks_query = tracks_query.filter(transcript__content__icontains=transcript_search_query)
     if selected_artist:
         tracks_query = tracks_query.filter(artist=selected_artist)
     if selected_playlist_id:
@@ -102,7 +104,8 @@ def track_list(request):
         'artists': artists,
         'selected_playlist_id': int(request.GET.get('playlist')) if request.GET.get('playlist') else None,
         'selected_artist': request.GET.get('artist'),
-        'search_query': request.GET.get('search'),
+        'search_title_query': title_search_query,
+        'transcript_search_query': transcript_search_query,
         'sort_option': request.GET.get('sort', 'name'),
         'storage_usage': current_storage_usage,
         'storage_limit': user_storage_limit_bytes,

@@ -20,8 +20,8 @@
                 <div class="row g-3 align-items-end">
                     <!-- Search -->
                     <div class="col-md-4">
-                        <label for="search-input" class="form-label">Search</label>
-                        <input type="text" id="search-input" class="form-control" value="{{ search_query|default:'' }}" placeholder="Keyword...">
+                        <label for="title-search-input" class="form-label">Title Search</label>
+                        <input type="text" id="title-search-input" class="form-control" value="{{ search_title_query|default:'' }}" placeholder="Keyword...">
                     </div>
                     <!-- Filter by Artist -->
                     <div class="col-md-3">
@@ -52,6 +52,12 @@
                             <option value="name" {% if sort_option == 'name' %}selected{% endif %}>Alphabetical</option>
                             <option value="last_played" {% if sort_option == 'last_played' %}selected{% endif %}>Last Played</option>
                         </select>
+                    </div>
+                </div>
+                <div class="row g-3 align-items-end mt-2">
+                    <div class="col-md-6 col-lg-12">
+                        <label for="transcript-search-input" class="form-label">Transcript Search</label>
+                        <input type="text" id="transcript-search-input" class="form-control" value="{{ transcript_search_query|default:'' }}" placeholder="Transcript text...">
                     </div>
                 </div>
             </form>
@@ -89,7 +95,8 @@
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('search-input');
+    const titleSearchInput = document.getElementById('title-search-input');
+    const transcriptSearchInput = document.getElementById('transcript-search-input');
     const artistFilter = document.getElementById('artist-filter');
     const playlistFilter = document.getElementById('playlist-filter');
     const sortSelect = document.getElementById('sort-select');
@@ -97,12 +104,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const paginationContainer = document.getElementById('pagination-container');
 
     function fetchTracks(page) {
-        const search = searchInput.value;
+        const searchTitle = titleSearchInput.value;
+        const searchTranscript = transcriptSearchInput.value;
         const artist = artistFilter.value;
         const playlist = playlistFilter.value;
         const sort = sortSelect.value;
 
-        const params = new URLSearchParams({ page, search, artist, playlist, sort });
+        const params = new URLSearchParams({
+            page,
+            search_title: searchTitle,
+            search_transcript: searchTranscript,
+            artist,
+            playlist,
+            sort
+        });
         const url = `?${params.toString()}`;
 
         fetch(url, {
@@ -131,11 +146,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Attach event listeners to filter controls
-    const filterControls = [searchInput, artistFilter, playlistFilter, sortSelect];
+    const filterControls = [artistFilter, playlistFilter, sortSelect];
     filterControls.forEach(control => {
         control.addEventListener('change', () => fetchTracks(1)); // Use 'change' for select/checkbox
     });
-    searchInput.addEventListener('input', () => fetchTracks(1)); // Use 'input' for real-time feedback
+    [titleSearchInput, transcriptSearchInput].forEach(input => {
+        input.addEventListener('input', () => fetchTracks(1));
+    }); // Use 'input' for real-time feedback
 
     addDeleteModalListener();
     addDeleteConfirmationListener();
