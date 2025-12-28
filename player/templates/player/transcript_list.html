@@ -12,7 +12,7 @@
                     <th>Created</th>
                     <th>Processing Started</th>
                     <th>Updated</th>
-                    <th>Actions</th>
+                    <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -25,23 +25,78 @@
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.created_at|date:'c' }}">{{ transcript.created_at|date:"M d, Y H:i" }}</span></td>
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.processing_started_at|date:'c' }}">{{ transcript.processing_started_at|date:"M d, Y H:i" }}</span></td>
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.updated_at|date:'c' }}">{{ transcript.updated_at|date:"M d, Y H:i" }}</span></td>
-                    <td>
-                        <a href="{% url 'edit_track' transcript.track.id %}" class="btn btn-sm btn-outline-primary">Edit Track</a>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary btn-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'edit_track' transcript.track.id %}">
+                                        <i class="fas fa-edit me-2"></i>Edit track
+                                    </a>
+                                </li>
+                                {% if transcript.status == 'completed' %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'export_transcript' transcript.track.id %}">
+                                        <i class="fas fa-file-export me-2"></i>Export transcript SRT
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% if transcript.status == 'pending' %}
+                                <li>
+                                    <a class="dropdown-item text-danger cancel-transcript" href="#" data-track-id="{{ transcript.track.id }}">
+                                        <i class="fas fa-ban me-2"></i>Cancel transcription
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center">No transcripts found.</td>
+                    <td colspan="6" class="text-center">No transcripts found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% if transcripts.paginator.num_pages > 1 %}
+            <nav aria-label="Transcript pagination" id="pagination-container">
+                <ul class="pagination justify-content-center">
+                    {% if transcripts.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page=1">&laquo; First</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ transcripts.previous_page_number }}">Previous</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link" href="#">&laquo; First</a></li>
+                        <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+                    {% endif %}
+
+                    {% for i in transcripts.paginator.page_range %}
+                        {% if transcripts.number == i %}
+                            <li class="page-item active" aria-current="page"><span class="page-link">{{ i }}</span></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if transcripts.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ transcripts.next_page_number }}">Next</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ transcripts.paginator.num_pages }}">Last &raquo;</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link" href="#">Next</a></li>
+                        <li class="page-item disabled"><a class="page-link" href="#">Last &raquo;</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
     </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const pollInterval = 5000; // 5 seconds
+    const csrfToken = '{{ csrf_token }}';
 
     function checkStatus() {
         const processingRows = document.querySelectorAll('tr[data-transcript-id]');
@@ -76,6 +131,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     setInterval(checkStatus, pollInterval);
+
+    document.querySelectorAll('.cancel-transcript').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const trackId = this.dataset.trackId;
+            fetch(`/track/${trackId}/transcript/cancel/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const row = document.querySelector(`tr[data-track-id="${trackId}"]`);
+                    if (row) {
+                        const statusCell = row.querySelector('.status-cell');
+                        if (statusCell && data.html) {
+                            statusCell.innerHTML = data.html;
+                        }
+                        // Remove cancel option
+                        const cancelItem = row.querySelector('.cancel-transcript')?.closest('li');
+                        if (cancelItem) {
+                            cancelItem.remove();
+                        }
+                    }
+                    showToast('Transcription cancelled.', 'success');
+                } else {
+                    showToast(data.message || 'Unable to cancel transcription.', 'error');
+                }
+            })
+            .catch(() => showToast('Unable to cancel transcription.', 'error'));
+        });
+    });
 });
 </script>
 {% endblock %}

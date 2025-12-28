@@ -353,7 +353,12 @@ def update_transcript(request, track_id):
 @login_required
 def transcript_list(request):
     transcripts = Transcript.objects.filter(track__owner=request.user).select_related('track').order_by('-created_at')
-    return render(request, 'player/transcript_list.html', {'transcripts': transcripts})
+
+    paginator = Paginator(transcripts, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'player/transcript_list.html', {'transcripts': page_obj})
 
 @login_required
 def get_transcript_status(request, track_id):
@@ -391,6 +396,42 @@ def get_transcript_json(request, track_id):
         return JsonResponse({'status': 'success', 'transcript': data})
     except Transcript.DoesNotExist:
         return JsonResponse({'status': 'unavailable'})
+
+
+@login_required
+def export_transcript(request, track_id):
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    try:
+        transcript = track.transcript
+    except Transcript.DoesNotExist:
+        return HttpResponse("Transcript not found.", status=404)
+
+    if transcript.status != 'completed' or not transcript.content:
+        return HttpResponse("Transcript not available for export.", status=400)
+
+    response = HttpResponse(transcript.content, content_type='application/x-subrip')
+    response['Content-Disposition'] = f'attachment; filename="{track.name}.srt"'
+    return response
+
+
+@login_required
+@require_POST
+def cancel_transcript(request, track_id):
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    try:
+        transcript = track.transcript
+    except Transcript.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Transcript not found.'}, status=404)
+
+    if transcript.status != 'pending':
+        return JsonResponse({'status': 'error', 'message': 'Only pending transcripts can be cancelled.'}, status=400)
+
+    transcript.status = 'failed'
+    transcript.error_message = 'Cancelled by user.'
+    transcript.save()
+
+    html = render_to_string('player/partials/transcript_status.html', {'transcript': transcript})
+    return JsonResponse({'status': 'success', 'html': html})
 
 @login_required
 def download_track(request, track_id):
