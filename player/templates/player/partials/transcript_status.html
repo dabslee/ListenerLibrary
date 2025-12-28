@@ -1,8 +1,10 @@
-<span class="badge {% if transcript.status == 'completed' %}bg-success{% elif transcript.status == 'failed' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+<span class="badge {% if transcript.status == 'completed' %}bg-success{% elif transcript.status == 'failed' %}bg-danger{% elif transcript.status == 'pending' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
     {{ transcript.status|title }}
+    {% if transcript.status == 'processing' %}...
+    {% endif %}
 </span>
 {% if transcript.status == 'failed' and transcript.error_message %}
-    <div class="alert alert-danger mt-2">
+    <span class="ms-1 text-danger">
         {{ transcript.error_message }}
-    </div>
+    </span>
 {% endif %}

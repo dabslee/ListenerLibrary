@@ -50,6 +50,13 @@
                                     </a>
                                 </li>
                                 {% endif %}
+                                {% if transcript.status == 'failed' %}
+                                <li>
+                                    <a class="dropdown-item retry-transcript" href="#" data-track-id="{{ transcript.track.id }}">
+                                        <i class="fas fa-rotate-right me-2"></i>Retry transcription
+                                    </a>
+                                </li>
+                                {% endif %}
                             </ul>
                         </div>
                     </td>
@@ -163,6 +170,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(() => showToast('Unable to cancel transcription.', 'error'));
+        });
+    });
+
+    document.querySelectorAll('.retry-transcript').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const trackId = this.dataset.trackId;
+            const formData = new FormData();
+            formData.append('action', 'request');
+
+            fetch(`/track/${trackId}/transcript/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error();
+                return fetch(`/api/transcript/status/${trackId}/`);
+            })
+            .then(r => r.json())
+            .then(data => {
+                const row = document.querySelector(`tr[data-track-id="${trackId}"]`);
+                if (row && data.html) {
+                    const statusCell = row.querySelector('.status-cell');
+                    if (statusCell) {
+                        statusCell.innerHTML = data.html;
+                    }
+                    const retryItem = row.querySelector('.retry-transcript')?.closest('li');
+                    if (retryItem) retryItem.remove();
+                }
+                showToast('Transcription retry requested.', 'success');
+            })
+            .catch(() => showToast('Unable to retry transcription.', 'error'));
         });
     });
 });
