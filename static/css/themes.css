@@ -8,6 +8,9 @@ body {
 }
 
 /* --- Dark Theme --- */
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
 html[data-theme="dark"] body {
     background-color: #212529;
     color: #f8f9fa;
@@ -64,6 +67,9 @@ html[data-theme="light-blue"] .btn-primary {
 }
 
 /* --- Dark Blue Theme --- */
+html[data-theme="dark-blue"] {
+    color-scheme: dark;
+}
 html[data-theme="dark-blue"] body {
     background-color: #0d1b2a;
     color: #e0e1dd;
