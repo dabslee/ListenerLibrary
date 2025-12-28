@@ -116,8 +116,8 @@
         </div>
     </div>
 
-    <!-- Audio player is inherited from base.html, no need to duplicate ID -->
-    <!-- <audio id="audio-player" class="d-none"></audio> -->
+    <!-- Audio player is needed here because this template extends raw_base.html directly -->
+    <audio id="audio-player" class="d-none"></audio>
 </div>
 
 <style>
