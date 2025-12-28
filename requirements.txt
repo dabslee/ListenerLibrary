@@ -4,6 +4,5 @@ mutagen
 pydub
 gunicorn
 psycopg2
-pyaudioop
 openai-whisper
 pysrt
