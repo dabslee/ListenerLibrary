@@ -4,6 +4,7 @@ import os
 import tempfile
 import warnings
 import time
+from django.utils import timezone
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -41,6 +42,7 @@ class Command(BaseCommand):
     def process_transcript(self, transcript, model):
         self.stdout.write(f"Processing transcript for {transcript.track.name}...")
         transcript.status = 'processing'
+        transcript.processing_started_at = timezone.now()
         transcript.save()
 
         try:

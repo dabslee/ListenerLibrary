@@ -22,6 +22,17 @@
                         <span class="badge {% if transcript.status == 'completed' %}bg-success{% elif transcript.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
                             {{ transcript.status|title }}
                         </span>
+                        {% if transcript.status == 'processing' %}
+                            <div class="mt-1" style="width: 100px;">
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                                         style="width: 0%"
+                                         data-start-time="{{ transcript.processing_started_at|date:'U' }}"
+                                         data-duration="{{ transcript.track.duration }}"></div>
+                                </div>
+                                <small class="text-muted eta-text" style="font-size: 0.7em;">Calculating...</small>
+                            </div>
+                        {% endif %}
                     </td>
                     <td>{{ transcript.created_at|date:"M d, Y H:i" }}</td>
                     <td>{{ transcript.updated_at|date:"M d, Y H:i" }}</td>
@@ -38,4 +49,40 @@
         </table>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function updateProgress() {
+        const now = Math.floor(Date.now() / 1000);
+        document.querySelectorAll('.progress-bar').forEach(bar => {
+            const startTime = parseInt(bar.dataset.startTime);
+            const duration = parseFloat(bar.dataset.duration);
+
+            if (isNaN(startTime) || isNaN(duration) || duration === 0) return;
+
+            // Estimate processing speed (e.g., 20% of duration for 'tiny' model)
+            const estimatedProcessingTime = duration * 0.2;
+            const elapsed = now - startTime;
+            let percent = (elapsed / estimatedProcessingTime) * 100;
+
+            if (percent > 95) percent = 99; // Cap at 99 until actually done
+
+            bar.style.width = percent + '%';
+
+            const etaSeconds = Math.max(0, estimatedProcessingTime - elapsed);
+            const etaText = bar.parentElement.nextElementSibling;
+            if (etaText) {
+                if (percent < 99) {
+                    etaText.textContent = `~${Math.ceil(etaSeconds)}s remaining`;
+                } else {
+                    etaText.textContent = 'Finishing up...';
+                }
+            }
+        });
+    }
+
+    setInterval(updateProgress, 1000);
+    updateProgress();
+});
+</script>
 {% endblock %}

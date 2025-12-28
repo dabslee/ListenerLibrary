@@ -53,6 +53,7 @@ class Transcript(models.Model):
     status = models.CharField(max_length=20, choices=status_choices, default='pending')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    processing_started_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True, null=True)
 
     def __str__(self):
