@@ -681,38 +681,48 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- SLEEP TIMER EVENT LISTENERS ---
-    startSleepTimerBtn.addEventListener('click', () => {
-        const minutes = parseInt(sleepTimerMinutesInput.value, 10);
-        if (!isNaN(minutes) && minutes > 0) {
-            startTimer(minutes);
-        } else {
-            showToast("Please enter a valid number of minutes.", "var(--bs-danger)");
-        }
-    });
+    if (startSleepTimerBtn) {
+        startSleepTimerBtn.addEventListener('click', () => {
+            const minutes = parseInt(sleepTimerMinutesInput.value, 10);
+            if (!isNaN(minutes) && minutes > 0) {
+                startTimer(minutes);
+            } else {
+                showToast("Please enter a valid number of minutes.", "var(--bs-danger)");
+            }
+        });
+    }
 
-    cancelSleepTimerBtn.addEventListener('click', () => {
-        cancelTimer(true);
-        showToast("Sleep timer cancelled.");
-    });
+    if (cancelSleepTimerBtn) {
+        cancelSleepTimerBtn.addEventListener('click', () => {
+            cancelTimer(true);
+            showToast("Sleep timer cancelled.");
+        });
+    }
 
-    pauseResumeSleepTimerBtn.addEventListener('click', togglePauseTimer);
+    if (pauseResumeSleepTimerBtn) {
+        pauseResumeSleepTimerBtn.addEventListener('click', togglePauseTimer);
+    }
 
-    sleepTimerModal.addEventListener('show.bs.modal', () => {
-        // When modal opens, show the correct view based on timer state
-        if (sleepTimerEndTime) {
-            setupTimerView.style.display = 'none';
-            activeTimerView.style.display = 'block';
-            updateTimerDisplay(); // Ensure countdown is up-to-date
-        } else {
-            setupTimerView.style.display = 'block';
-            activeTimerView.style.display = 'none';
-        }
-    });
+    if (sleepTimerModal) {
+        sleepTimerModal.addEventListener('show.bs.modal', () => {
+            // When modal opens, show the correct view based on timer state
+            if (sleepTimerEndTime) {
+                setupTimerView.style.display = 'none';
+                activeTimerView.style.display = 'block';
+                updateTimerDisplay(); // Ensure countdown is up-to-date
+            } else {
+                setupTimerView.style.display = 'block';
+                activeTimerView.style.display = 'none';
+            }
+        });
+    }
 
-    sleepTimerNavDisplay.addEventListener('click', () => {
-        const modalInstance = bootstrap.Modal.getOrCreateInstance(sleepTimerModal);
-        modalInstance.show();
-    });
+    if (sleepTimerNavDisplay) {
+        sleepTimerNavDisplay.addEventListener('click', () => {
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(sleepTimerModal);
+            modalInstance.show();
+        });
+    }
 
 
     initializePlayer();
