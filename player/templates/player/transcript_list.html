@@ -21,8 +21,8 @@
                     <td class="status-cell">
                         {% include "player/partials/transcript_status.html" %}
                     </td>
-                    <td>{{ transcript.created_at|date:"M d, Y H:i" }}</td>
-                    <td>{{ transcript.updated_at|date:"M d, Y H:i" }}</td>
+                    <td><span class="local-datetime" data-local-datetime="{{ transcript.created_at|date:'c' }}">{{ transcript.created_at|date:"M d, Y H:i" }}</span></td>
+                    <td><span class="local-datetime" data-local-datetime="{{ transcript.updated_at|date:'c' }}">{{ transcript.updated_at|date:"M d, Y H:i" }}</span></td>
                     <td>
                         <a href="{% url 'edit_track' transcript.track.id %}" class="btn btn-sm btn-outline-primary">Edit Track</a>
                     </td>

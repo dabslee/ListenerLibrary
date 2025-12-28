@@ -191,6 +191,29 @@
     <script src="{% static 'js/player.js' %}"></script>
     <script src="{% static 'js/toasts.js' %}"></script>
     <script>
+        function renderLocalDatetimes() {
+            const elements = document.querySelectorAll('[data-local-datetime]');
+            if (!elements.length) return;
+
+            const formatter = new Intl.DateTimeFormat([], {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            elements.forEach((el) => {
+                const isoString = el.getAttribute('data-local-datetime');
+                if (!isoString) return;
+
+                const parsedDate = new Date(isoString);
+                if (!isNaN(parsedDate.getTime())) {
+                    el.textContent = formatter.format(parsedDate);
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('bookmark-list').addEventListener('click', function(event) {
                 const playButton = event.target.closest('.play-bookmark-btn');
@@ -270,6 +293,7 @@
 
             // Apply the saved theme on initial load
             applyTheme(savedTheme);
+            renderLocalDatetimes();
 
             // Add event listener to the theme selector
             if (themeSelect) {
