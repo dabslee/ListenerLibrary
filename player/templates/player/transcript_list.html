@@ -16,23 +16,10 @@
             </thead>
             <tbody>
                 {% for transcript in transcripts %}
-                <tr>
+                <tr data-transcript-id="{{ transcript.id }}" data-track-id="{{ transcript.track.id }}">
                     <td>{{ transcript.track.name }}</td>
-                    <td>
-                        <span class="badge {% if transcript.status == 'completed' %}bg-success{% elif transcript.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
-                            {{ transcript.status|title }}
-                        </span>
-                        {% if transcript.status == 'processing' %}
-                            <div class="mt-1" style="width: 100px;">
-                                <div class="progress" style="height: 5px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-                                         style="width: 0%"
-                                         data-start-time="{{ transcript.processing_started_at|date:'U' }}"
-                                         data-duration="{{ transcript.track.duration }}"></div>
-                                </div>
-                                <small class="text-muted eta-text" style="font-size: 0.7em;">Calculating...</small>
-                            </div>
-                        {% endif %}
+                    <td class="status-cell">
+                        {% include "player/partials/transcript_status.html" %}
                     </td>
                     <td>{{ transcript.created_at|date:"M d, Y H:i" }}</td>
                     <td>{{ transcript.updated_at|date:"M d, Y H:i" }}</td>
@@ -52,37 +39,41 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    function updateProgress() {
-        const now = Math.floor(Date.now() / 1000);
-        document.querySelectorAll('.progress-bar').forEach(bar => {
-            const startTime = parseInt(bar.dataset.startTime);
-            const duration = parseFloat(bar.dataset.duration);
+    const pollInterval = 5000; // 5 seconds
 
-            if (isNaN(startTime) || isNaN(duration) || duration === 0) return;
+    function checkStatus() {
+        const processingRows = document.querySelectorAll('tr[data-transcript-id]');
+        const idsToCheck = [];
 
-            // Estimate processing speed (e.g., 20% of duration for 'tiny' model)
-            const estimatedProcessingTime = duration * 0.2;
-            const elapsed = now - startTime;
-            let percent = (elapsed / estimatedProcessingTime) * 100;
-
-            if (percent > 95) percent = 99; // Cap at 99 until actually done
-
-            bar.style.width = percent + '%';
-
-            const etaSeconds = Math.max(0, estimatedProcessingTime - elapsed);
-            const etaText = bar.parentElement.nextElementSibling;
-            if (etaText) {
-                if (percent < 99) {
-                    etaText.textContent = `~${Math.ceil(etaSeconds)}s remaining`;
-                } else {
-                    etaText.textContent = 'Finishing up...';
-                }
+        processingRows.forEach(row => {
+            const badge = row.querySelector('.badge');
+            if (badge && (badge.textContent.trim().toLowerCase() === 'processing' || badge.textContent.trim().toLowerCase() === 'pending')) {
+                idsToCheck.push(row.dataset.trackId);
             }
+        });
+
+        if (idsToCheck.length === 0) return;
+
+        idsToCheck.forEach(trackId => {
+            fetch(`/api/transcript/status/${trackId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.html) {
+                        const row = document.querySelector(`tr[data-track-id="${trackId}"]`);
+                        if (row) {
+                            const cell = row.querySelector('.status-cell');
+                            // Only update if status changed or content is different
+                            if (cell.innerHTML.trim() !== data.html.trim()) {
+                                cell.innerHTML = data.html;
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.error('Error polling status:', err));
         });
     }
 
-    setInterval(updateProgress, 1000);
-    updateProgress();
+    setInterval(checkStatus, pollInterval);
 });
 </script>
 {% endblock %}

@@ -55,5 +55,5 @@ class TranscriptUploadForm(forms.ModelForm):
         model = Transcript
         fields = ['source_file']
         widgets = {
-            'source_file': forms.FileInput(attrs={'class': 'form-control', 'accept': '.srt,.txt,.epub'}),
+            'source_file': forms.FileInput(attrs={'class': 'form-control', 'accept': '.srt'}),
         }

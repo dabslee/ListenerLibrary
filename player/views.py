@@ -282,8 +282,10 @@ def update_transcript(request, track_id):
                     transcript.status = 'failed'
                     transcript.error_message = f"Invalid SRT file: {e}"
             else:
-                transcript.status = 'pending' # Worker will handle text/epub
-                transcript.error_message = None
+                # We removed support for non-srt files for alignment
+                # Just ignore or set error? Setting error for now to be safe.
+                transcript.status = 'failed'
+                transcript.error_message = "Only .srt files are supported for upload."
 
             transcript.save()
         else:
@@ -296,6 +298,19 @@ def update_transcript(request, track_id):
 def transcript_list(request):
     transcripts = Transcript.objects.filter(track__owner=request.user).select_related('track').order_by('-created_at')
     return render(request, 'player/transcript_list.html', {'transcripts': transcripts})
+
+@login_required
+def get_transcript_status(request, track_id):
+    track = get_object_or_404(Track, pk=track_id)
+    if track.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+
+    try:
+        transcript = track.transcript
+        html = render_to_string('player/partials/transcript_status.html', {'transcript': transcript})
+        return JsonResponse({'status': transcript.status, 'html': html})
+    except Transcript.DoesNotExist:
+        return JsonResponse({'status': 'none', 'html': ''})
 
 @login_required
 def get_transcript_json(request, track_id):

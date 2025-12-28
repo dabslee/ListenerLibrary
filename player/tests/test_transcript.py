@@ -49,5 +49,4 @@ class TranscriptTests(TestCase):
         })
 
         transcript = Transcript.objects.get(track=self.track)
-        self.assertEqual(transcript.status, 'pending') # Should queue for alignment/processing
-        self.assertTrue(transcript.source_file)
+        self.assertEqual(transcript.status, 'failed') # Should fail as only SRT is allowed
