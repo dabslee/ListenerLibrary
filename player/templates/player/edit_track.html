@@ -38,36 +38,11 @@
             <div class="card-header">
                 <h4 class="mb-0">Transcript</h4>
             </div>
-            <div class="card-body">
+            <div class="card-body" id="transcript-status-container" data-track-id="{{ track.id }}">
                 {% if transcript %}
-                    <div class="mb-3">
+                    <div class="mb-3 status-cell">
                         <strong>Status:</strong>
-                        <span class="badge {% if transcript.status == 'completed' %}bg-success{% elif transcript.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
-                            {{ transcript.status|title }}
-                        </span>
-                        {% if transcript.status == 'processing' %}
-                            <div class="mt-2">
-                                <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-                                         style="width: 0%"
-                                         data-start-time="{{ transcript.processing_started_at|date:'U' }}"
-                                         data-duration="{{ track.duration }}"></div>
-                                </div>
-                                <div class="text-center">
-                                    <small class="text-muted eta-text">Estimating time remaining...</small>
-                                </div>
-                            </div>
-                        {% endif %}
-                        {% if transcript.status == 'failed' and transcript.error_message %}
-                            <div class="alert alert-danger mt-2">
-                                {{ transcript.error_message }}
-                            </div>
-                        {% endif %}
-                        {% if transcript.status == 'completed' %}
-                            <div class="mt-2 text-muted">
-                                Transcript available.
-                            </div>
-                        {% endif %}
+                        {% include "player/partials/transcript_status.html" %}
                     </div>
                 {% endif %}
 
@@ -78,7 +53,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="upload">
                     <div class="mb-3">
-                        <label class="form-label">Upload Existing Transcript (SRT, TXT, EPUB)</label>
+                        <label class="form-label">Upload Existing Transcript (SRT)</label>
                         {{ transcript_form.source_file }}
                     </div>
                     <button type="submit" class="btn btn-info btn-sm">Upload File</button>
@@ -108,40 +83,41 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    function updateProgress() {
-        const now = Math.floor(Date.now() / 1000);
-        document.querySelectorAll('.progress-bar').forEach(bar => {
-            const startTime = parseInt(bar.dataset.startTime);
-            const duration = parseFloat(bar.dataset.duration);
+    const pollInterval = 5000;
+    const container = document.getElementById('transcript-status-container');
+    const trackId = container ? container.dataset.trackId : null;
 
-            if (isNaN(startTime) || isNaN(duration) || duration === 0) return;
+    function checkStatus() {
+        if (!trackId) return;
 
-            // Estimate processing speed (e.g., 20% of duration for 'tiny' model)
-            const estimatedProcessingTime = duration * 0.2;
-            const elapsed = now - startTime;
-            let percent = (elapsed / estimatedProcessingTime) * 100;
-
-            if (percent > 95) percent = 99; // Cap at 99 until actually done
-
-            bar.style.width = percent + '%';
-
-            const etaSeconds = Math.max(0, estimatedProcessingTime - elapsed);
-            // eta-text is typically next sibling or nearby
-            // In edit_track it's parent's sibling
-            const etaText = bar.parentElement.nextElementSibling.querySelector('.eta-text');
-            if (etaText) {
-                if (percent < 99) {
-                    etaText.textContent = `Estimated time remaining: ~${Math.ceil(etaSeconds)}s`;
-                } else {
-                    etaText.textContent = 'Finishing up...';
-                }
-            }
-        });
+        const badge = container.querySelector('.badge');
+        if (badge && (badge.textContent.trim().toLowerCase() === 'processing' || badge.textContent.trim().toLowerCase() === 'pending')) {
+             fetch(`/api/transcript/status/${trackId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.html) {
+                        const cell = container.querySelector('.status-cell');
+                        // Use a temp element to check text content difference to avoid jitter/re-renders if same
+                        if (cell && cell.innerHTML.trim() !== `<strong>Status:</strong> ${data.html}`.trim() && cell.innerHTML.indexOf(data.html.trim()) === -1) {
+                             cell.innerHTML = `<strong>Status:</strong> ${data.html}`;
+                             // If completed, maybe reload or enable buttons?
+                             // For now, just update the badge is sufficient.
+                             if (data.status === 'completed') {
+                                 const btn = document.querySelector('button[type="submit"].btn-secondary');
+                                 if (btn) {
+                                     btn.textContent = 'Request Auto-Transcription';
+                                     btn.disabled = false;
+                                 }
+                             }
+                        }
+                    }
+                })
+                .catch(err => console.error('Error polling status:', err));
+        }
     }
 
-    if (document.querySelector('.progress-bar')) {
-        setInterval(updateProgress, 1000);
-        updateProgress();
+    if (trackId) {
+        setInterval(checkStatus, pollInterval);
     }
 });
 </script>
