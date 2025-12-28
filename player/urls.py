@@ -9,9 +9,12 @@ urlpatterns = [
     path('upload/', views.upload_track, name='upload_track'),
     path('api/track/<int:track_id>/delete/', views.delete_track_api, name='delete_track_api'),
     path('track/<int:track_id>/edit/', views.edit_track, name='edit_track'),
+    path('track/<int:track_id>/transcript/', views.update_transcript, name='update_transcript'),
     path('track/<int:track_id>/download/', views.download_track, name='download_track'),
     path('track/<int:track_id>/stream/', views.stream_track, name='stream_track'),
     path('api/update_playback_state/', views.update_playback_state, name='update_playback_state'),
+    path('api/track/<int:track_id>/transcript/', views.get_transcript_json, name='get_transcript_json'),
+    path('transcripts/', views.transcript_list, name='transcript_list'),
 
     # Playlist URLs
     path('playlists/', views.playlist_list, name='playlist_list'),

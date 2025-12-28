@@ -11,9 +11,10 @@ from django.contrib.auth import login, authenticate
 from django.http import FileResponse, StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from .forms import TrackForm, PlaylistForm, BookmarkForm, PlaylistUploadForm
-from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed, Bookmark
+from .forms import TrackForm, PlaylistForm, BookmarkForm, PlaylistUploadForm, TranscriptUploadForm
+from .models import Track, UserPlaybackState, PodcastProgress, Playlist, PlaylistItem, UserTrackLastPlayed, Bookmark, Transcript
 from mutagen import File as MutagenFile
+import pysrt
 from django.utils import timezone
 from django.db import models
 from wsgiref.util import FileWrapper
@@ -36,7 +37,8 @@ def track_list(request):
     if search_query:
         tracks_query = tracks_query.filter(
             models.Q(name__icontains=search_query) |
-            models.Q(artist__icontains=search_query)
+            models.Q(artist__icontains=search_query) |
+            models.Q(transcript__content__icontains=search_query)
         )
     if selected_artist:
         tracks_query = tracks_query.filter(artist=selected_artist)
@@ -235,7 +237,89 @@ def edit_track(request, track_id):
             return redirect('track_list')
     else:
         form = TrackForm(instance=track)
-    return render(request, 'player/edit_track.html', {'form': form, 'track': track})
+
+    transcript_form = TranscriptUploadForm()
+    try:
+        transcript = track.transcript
+    except Transcript.DoesNotExist:
+        transcript = None
+
+    return render(request, 'player/edit_track.html', {
+        'form': form,
+        'track': track,
+        'transcript_form': transcript_form,
+        'transcript': transcript
+    })
+
+
+@login_required
+@require_POST
+def update_transcript(request, track_id):
+    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    action = request.POST.get('action')
+
+    if action == 'request':
+        Transcript.objects.update_or_create(
+            track=track,
+            defaults={'status': 'pending', 'source_file': None, 'error_message': None}
+        )
+    elif action == 'upload':
+        form = TranscriptUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            transcript, created = Transcript.objects.get_or_create(track=track)
+            f = request.FILES['source_file']
+            transcript.source_file = f
+
+            if f.name.lower().endswith('.srt'):
+                try:
+                    # Validate SRT
+                    content = f.read().decode('utf-8')
+                    pysrt.from_string(content) # Check if valid
+                    transcript.content = content
+                    transcript.status = 'completed'
+                    transcript.error_message = None
+                except Exception as e:
+                    transcript.status = 'failed'
+                    transcript.error_message = f"Invalid SRT file: {e}"
+            else:
+                transcript.status = 'pending' # Worker will handle text/epub
+                transcript.error_message = None
+
+            transcript.save()
+        else:
+             # Handle invalid form if necessary, though simpler to redirect with error in session if needed
+             pass
+
+    return redirect('edit_track', track_id=track_id)
+
+@login_required
+def transcript_list(request):
+    transcripts = Transcript.objects.filter(track__owner=request.user).select_related('track').order_by('-created_at')
+    return render(request, 'player/transcript_list.html', {'transcripts': transcripts})
+
+@login_required
+def get_transcript_json(request, track_id):
+    track = get_object_or_404(Track, pk=track_id) # Allow reading public tracks if shared? Assuming owner for now or public.
+    # If tracks are private to owner:
+    if track.owner != request.user:
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+
+    try:
+        transcript = track.transcript
+        if transcript.status != 'completed':
+            return JsonResponse({'status': 'unavailable'})
+
+        subs = pysrt.from_string(transcript.content)
+        data = []
+        for sub in subs:
+            data.append({
+                'start': sub.start.ordinal / 1000.0,
+                'end': sub.end.ordinal / 1000.0,
+                'text': sub.text
+            })
+        return JsonResponse({'status': 'success', 'transcript': data})
+    except Transcript.DoesNotExist:
+        return JsonResponse({'status': 'unavailable'})
 
 @login_required
 def download_track(request, track_id):

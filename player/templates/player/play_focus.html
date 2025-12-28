@@ -6,90 +6,146 @@
 <div class="d-flex flex-column flex-grow-1 justify-content-center align-items-center text-center w-100 p-4"
      style="max-width: 100%; margin: 0 auto;">
 
-    <div class="w-100 p-3" style="max-width: 400px;">
-        <div class="rounded d-flex flex-column align-items-center justify-content-center w-100"
-            style="aspect-ratio: 1 / 1; width: 100%; overflow: hidden; margin: 0 auto; background-color: rgba(255,255,255,0.1);">
-            <img id="player-icon" src="" alt="Album artwork"
-                class="img-fluid rounded w-100 d-none"
-                style="
-                    display: none;
-                    aspect-ratio: 1 / 1;
-                    object-fit: cover;
-                    width: 100%;
-                    height: 100%;
-                    max-width: 400px;
-                "
-                onload="document.getElementById('player-art-placeholder').classList.add('d-none'); this.classList.remove('d-none'); this.style.display='block';"
-                onerror="this.classList.add('d-none'); this.style.display='none'; document.getElementById('player-art-placeholder').classList.remove('d-none');">
-            <div id="player-art-placeholder" class="text-muted small text-uppercase text-center"
-                style="letter-spacing: 0.3em;">No Art</div>
-        </div>
-    </div>
-
-    <div class="w-100" style="max-width: 600px;">
-        <div id="player-playlist-info" class="text-secondary small" style="display: none;">
-            <i class="fas fa-headphones me-1"></i> <span id="player-playlist-name" class="fw-bold"></span>
-        </div>
-        <h2 id="player-track-name" class="fw-semibold mb-1">No track selected</h2>
-        <p class="text-muted fst-italic mb-4">By: <span id="player-track-artist">No artist</span></p>
-
-        <div class="w-100">
-            <div class="d-flex justify-content-between text-muted small mb-1 gap-2">
-                <span id="current-time">0:00</span>
-                <input type="range" id="seek-bar" class="form-range" value="0">
-                <span id="duration">0:00</span>
-            </div>
-        </div>
-
-        <div class="d-flex flex-column gap-4 w-100 mt-2">
-            <div class="d-flex flex-column">
-                <div class="d-flex justify-content-center align-items-center gap-1">
-                    <button id="prev-track-btn" class="btn btn-primary" type="button" title="Previous track">
-                        <i class="fas fa-step-backward"></i>
-                    </button>
-                    <button id="skip-back-btn" class="btn btn-primary" type="button" title="Skip back 15s">
-                        <i class="fas fa-backward"></i>
-                    </button>
-                    <button id="play-pause-btn" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center fs-4"
-                            type="button" title="Play / Pause" style="width: 64px; height: 64px;">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    <button id="skip-forward-btn" class="btn btn-primary" type="button" title="Skip forward 15s">
-                        <i class="fas fa-forward"></i>
-                    </button>
-                    <button id="next-track-btn" class="btn btn-primary" type="button" title="Next track">
-                        <i class="fas fa-step-forward"></i>
-                    </button>
-                </div>
-                <div class="align-items-center mt-2">
-                    <button id="shuffle-btn" class="btn btn-secondary" type="button" title="Shuffle">
-                        <i class="fas fa-random"></i>
-                    </button>
-                    <select id="playback-speed"
-                        class="btn btn-secondary"
+    <div class="row w-100 justify-content-center">
+        <!-- Player Column -->
+        <div class="col-lg-6 d-flex flex-column align-items-center">
+            <div class="w-100 p-3" style="max-width: 400px;">
+                <div class="rounded d-flex flex-column align-items-center justify-content-center w-100"
+                    style="aspect-ratio: 1 / 1; width: 100%; overflow: hidden; margin: 0 auto; background-color: rgba(255,255,255,0.1);">
+                    <img id="player-icon" src="" alt="Album artwork"
+                        class="img-fluid rounded w-100 d-none"
                         style="
-                            height: calc(2.375rem); /* matches .btn height */
-                            padding: 0 0.2rem;
-                            line-height: 1.5;
-                            text-align: center;
-                            appearance: none;
-                        ">
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="0.9">0.9x</option>
-                        <option value="1" selected>1x</option>
-                        <option value="1.1">1.1x</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="2">2x</option>
-                    </select>
+                            display: none;
+                            aspect-ratio: 1 / 1;
+                            object-fit: cover;
+                            width: 100%;
+                            height: 100%;
+                            max-width: 400px;
+                        "
+                        onload="document.getElementById('player-art-placeholder').classList.add('d-none'); this.classList.remove('d-none'); this.style.display='block';"
+                        onerror="this.classList.add('d-none'); this.style.display='none'; document.getElementById('player-art-placeholder').classList.remove('d-none');">
+                    <div id="player-art-placeholder" class="text-muted small text-uppercase text-center"
+                        style="letter-spacing: 0.3em;">No Art</div>
+                </div>
+            </div>
+
+            <div class="w-100" style="max-width: 600px;">
+                <div id="player-playlist-info" class="text-secondary small" style="display: none;">
+                    <i class="fas fa-headphones me-1"></i> <span id="player-playlist-name" class="fw-bold"></span>
+                </div>
+                <h2 id="player-track-name" class="fw-semibold mb-1">No track selected</h2>
+                <p class="text-muted fst-italic mb-4">By: <span id="player-track-artist">No artist</span></p>
+
+                <div class="w-100">
+                    <div class="d-flex justify-content-between text-muted small mb-1 gap-2">
+                        <span id="current-time">0:00</span>
+                        <input type="range" id="seek-bar" class="form-range" value="0">
+                        <span id="duration">0:00</span>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column gap-4 w-100 mt-2">
+                    <div class="d-flex flex-column">
+                        <div class="d-flex justify-content-center align-items-center gap-1">
+                            <button id="prev-track-btn" class="btn btn-primary" type="button" title="Previous track">
+                                <i class="fas fa-step-backward"></i>
+                            </button>
+                            <button id="skip-back-btn" class="btn btn-primary" type="button" title="Skip back 15s">
+                                <i class="fas fa-backward"></i>
+                            </button>
+                            <button id="play-pause-btn" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center fs-4"
+                                    type="button" title="Play / Pause" style="width: 64px; height: 64px;">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button id="skip-forward-btn" class="btn btn-primary" type="button" title="Skip forward 15s">
+                                <i class="fas fa-forward"></i>
+                            </button>
+                            <button id="next-track-btn" class="btn btn-primary" type="button" title="Next track">
+                                <i class="fas fa-step-forward"></i>
+                            </button>
+                        </div>
+                        <div class="align-items-center mt-2">
+                            <button id="shuffle-btn" class="btn btn-secondary" type="button" title="Shuffle">
+                                <i class="fas fa-random"></i>
+                            </button>
+                            <select id="playback-speed"
+                                class="btn btn-secondary"
+                                style="
+                                    height: calc(2.375rem); /* matches .btn height */
+                                    padding: 0 0.2rem;
+                                    line-height: 1.5;
+                                    text-align: center;
+                                    appearance: none;
+                                ">
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="0.9">0.9x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="1.1">1.1x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="2">2x</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <audio id="audio-player" class="d-none"></audio>
+        <!-- Transcript Column -->
+        <div class="col-lg-5 mt-4 mt-lg-0 d-none" id="transcript-container">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Transcript</h5>
+                    <button class="btn btn-sm btn-outline-secondary" id="transcript-auto-scroll-btn" title="Toggle Auto-Scroll">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="card-body p-0 d-flex flex-column" style="height: 500px;">
+                    <div class="p-2 border-bottom">
+                         <input type="text" id="transcript-search" class="form-control form-control-sm" placeholder="Search transcript...">
+                    </div>
+                    <div id="transcript-content" class="overflow-auto p-3 flex-grow-1" style="scroll-behavior: smooth;">
+                        <!-- Transcript lines will be injected here -->
+                    </div>
+                    <button id="scroll-to-current-btn" class="btn btn-sm btn-primary m-2 position-absolute" style="bottom: 10px; right: 20px; display: none; z-index: 10;">
+                        Sync to Audio
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <audio id="audio-player" class="d-none"></audio>
 </div>
+
+<style>
+    .transcript-line {
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        color: var(--bs-body-color);
+        opacity: 0.7;
+    }
+    .transcript-line:hover {
+        background-color: rgba(0,0,0,0.05);
+        opacity: 1;
+    }
+    .transcript-line.active {
+        background-color: rgba(13, 110, 253, 0.2);
+        color: var(--bs-primary);
+        font-weight: bold;
+        opacity: 1;
+    }
+    .transcript-line.past {
+        opacity: 0.5;
+    }
+    .highlight-match {
+        background-color: yellow;
+        color: black;
+    }
+</style>
 {% endblock %}
 
 {% block player_footer %}{% endblock %}
@@ -137,6 +193,217 @@ document.addEventListener('DOMContentLoaded', function () {
         mainEl.style.minHeight = `calc(100vh - ${navHeight}px)`;
         mainEl.style.width = '100%';
     }
+
+    // Transcript Logic
+    const transcriptContainer = document.getElementById('transcript-container');
+    const transcriptContent = document.getElementById('transcript-content');
+    const searchInput = document.getElementById('transcript-search');
+    const autoScrollBtn = document.getElementById('transcript-auto-scroll-btn');
+    const scrollToCurrentBtn = document.getElementById('scroll-to-current-btn');
+    const audioPlayer = document.getElementById('audio-player');
+
+    let transcriptData = [];
+    let autoScroll = true;
+    let currentTrackId = null;
+
+    // Hook into global player load (assuming custom event or observing DOM)
+    // Since player.js updates the UI but doesn't emit a clean event, we might need to modify player.js
+    // OR we can poll for changes in track ID.
+    // Ideally, player.js should trigger an event.
+    // For now, let's look at `player-track-name` or specific hidden input if available.
+    // But better: use the `audioPlayer` 'loadedmetadata' or 'play' event to check if track changed.
+
+    // We need to know the Track ID. The current play_focus template logic relies on player.js populating fields.
+    // We can intercept `loadAndPlayTrack` if we can access it, or just monitor `audioPlayer.src`.
+    // Actually, `player.js` is global. Let's see if we can hook into it.
+
+    // Hack: Overwrite `loadAndPlayTrack` or Listen for `user-playback-state` updates.
+    // The cleanest way without modifying player.js heavily is to listen to `audio` events and fetch transcript if ID changed.
+    // But `audio.src` is a stream URL like `/track/1/stream/`. We can extract ID.
+
+    function getTrackIdFromSrc(src) {
+        const match = src.match(/\/track\/(\d+)\/stream\//);
+        return match ? match[1] : null;
+    }
+
+    async function loadTranscript(trackId) {
+        if (!trackId) return;
+        currentTrackId = trackId;
+        transcriptContainer.classList.add('d-none');
+        transcriptContent.innerHTML = '<div class="text-center text-muted mt-5">Loading transcript...</div>';
+
+        try {
+            const response = await fetch(`/api/track/${trackId}/transcript/`);
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                transcriptData = data.transcript;
+                renderTranscript();
+                transcriptContainer.classList.remove('d-none');
+            } else {
+                transcriptData = [];
+                transcriptContent.innerHTML = '';
+                transcriptContainer.classList.add('d-none'); // Hide if unavailable
+            }
+        } catch (e) {
+            console.error("Failed to load transcript", e);
+            transcriptContainer.classList.add('d-none');
+        }
+    }
+
+    function renderTranscript() {
+        transcriptContent.innerHTML = '';
+        transcriptData.forEach((line, index) => {
+            const div = document.createElement('div');
+            div.className = 'transcript-line';
+            div.dataset.start = line.start;
+            div.dataset.end = line.end;
+            div.dataset.index = index;
+            div.textContent = line.text;
+            div.onclick = () => {
+                audioPlayer.currentTime = line.start;
+                audioPlayer.play();
+                setAutoScroll(true);
+            };
+            transcriptContent.appendChild(div);
+        });
+    }
+
+    function updateTranscriptHighlight() {
+        if (!transcriptData.length) return;
+        const currentTime = audioPlayer.currentTime;
+
+        // Find active line
+        // Optimization: could store last index, but N is small usually.
+        let activeIndex = -1;
+        for (let i = 0; i < transcriptData.length; i++) {
+            if (currentTime >= transcriptData[i].start && currentTime <= transcriptData[i].end) {
+                activeIndex = i;
+                break;
+            }
+            // Fallback for gaps: if between lines, highlight the upcoming or previous?
+            // Usually highlight the one we just passed if within a small window, or nothing.
+            // Let's stick to strict overlap or "most recent started"
+            if (currentTime >= transcriptData[i].start) {
+                activeIndex = i;
+            }
+        }
+
+        const lines = transcriptContent.children;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (i === activeIndex) {
+                line.classList.add('active');
+                line.classList.remove('past');
+                if (autoScroll) {
+                    scrollToLine(line);
+                }
+            } else if (i < activeIndex) {
+                line.classList.add('past');
+                line.classList.remove('active');
+            } else {
+                line.classList.remove('active', 'past');
+            }
+        }
+    }
+
+    function scrollToLine(element) {
+        const containerHeight = transcriptContent.clientHeight;
+        const scrollTop = transcriptContent.scrollTop;
+        const elementTop = element.offsetTop - transcriptContent.offsetTop;
+        const elementHeight = element.clientHeight;
+
+        // Center the element
+        const targetScroll = elementTop - (containerHeight / 2) + (elementHeight / 2);
+
+        transcriptContent.scrollTo({
+            top: targetScroll,
+            behavior: 'smooth'
+        });
+    }
+
+    function setAutoScroll(enabled) {
+        autoScroll = enabled;
+        autoScrollBtn.classList.toggle('btn-primary', enabled);
+        autoScrollBtn.classList.toggle('btn-outline-secondary', !enabled);
+        scrollToCurrentBtn.style.display = enabled ? 'none' : 'block';
+    }
+
+    // Event Listeners
+    audioPlayer.addEventListener('timeupdate', updateTranscriptHighlight);
+
+    // Detect track change
+    audioPlayer.addEventListener('loadedmetadata', () => {
+        const newTrackId = getTrackIdFromSrc(audioPlayer.src);
+        if (newTrackId && newTrackId !== currentTrackId) {
+            loadTranscript(newTrackId);
+        }
+    });
+
+    // Also check on load incase audio source is already set
+    const initialTrackId = getTrackIdFromSrc(audioPlayer.src);
+    if (initialTrackId) {
+        loadTranscript(initialTrackId);
+    }
+
+    // Scroll Logic
+    transcriptContent.addEventListener('scroll', () => {
+        // Simple heuristic: if user scrolls, disable auto-scroll
+        // But we need to distinguish between script-initiated scroll and user scroll.
+        // It's hard to distinguish perfectly.
+        // Let's rely on the button and click interactions for now.
+        // Or simpler: If user scrolls away from active element significantly?
+        // Let's leave it to manual toggle for robustness as requested ("user should be able to scroll away... include a button that will scroll you back").
+    });
+
+    // User manual interaction disables autoscroll (optional, but good UX)
+    transcriptContent.addEventListener('mousedown', () => {
+        // setAutoScroll(false); // Can be annoying if accidental. Let's stick to the button.
+    });
+
+    autoScrollBtn.addEventListener('click', () => {
+        setAutoScroll(!autoScroll);
+    });
+
+    scrollToCurrentBtn.addEventListener('click', () => {
+        setAutoScroll(true);
+        // Force immediate update
+        updateTranscriptHighlight();
+    });
+
+    // Search
+    searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const lines = transcriptContent.children;
+        let firstMatch = null;
+
+        for (let line of lines) {
+            const text = line.textContent.toLowerCase();
+            if (term && text.includes(term)) {
+                line.innerHTML = line.textContent.replace(new RegExp(term, 'gi'), match => `<span class="highlight-match">${match}</span>`);
+                line.classList.remove('d-none');
+                if (!firstMatch) firstMatch = line;
+            } else if (term) {
+                line.innerHTML = line.textContent;
+                line.classList.add('d-none'); // Hide non-matches? Or just highlight?
+                // "list matches in the transcript" - usually implies filtering or highlighting.
+                // Let's filter for clearer view, or just scroll to matches.
+                // "Search bar... loads and lists matches... click result takes you to point"
+                // Maybe a dropdown?
+                // For simplicity in this UI: Filter the list to show only matches. Clicking one plays it.
+                // But context is lost.
+                // Alternative: Highlight matches and scroll to first.
+            } else {
+                 line.innerHTML = line.textContent;
+                 line.classList.remove('d-none');
+            }
+        }
+
+        if (firstMatch) {
+            setAutoScroll(false);
+            scrollToLine(firstMatch);
+        }
+    });
 });
 </script>
 {% endblock %}

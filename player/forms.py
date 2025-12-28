@@ -1,5 +1,5 @@
 from django import forms
-from .models import Track, Playlist, Bookmark
+from .models import Track, Playlist, Bookmark, Transcript
 
 class PlaylistForm(forms.ModelForm):
     class Meta:
@@ -49,3 +49,11 @@ class TrackForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields['file'].required = False
             self.fields['icon'].required = False
+
+class TranscriptUploadForm(forms.ModelForm):
+    class Meta:
+        model = Transcript
+        fields = ['source_file']
+        widgets = {
+            'source_file': forms.FileInput(attrs={'class': 'form-control', 'accept': '.srt,.txt,.epub'}),
+        }

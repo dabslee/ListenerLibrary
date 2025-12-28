@@ -39,6 +39,9 @@
                 <span id="current-time" class="time-display">0:00</span>
                 <input type="range" id="seek-bar" class="form-range mx-2" value="0">
                 <span id="duration" class="time-display">0:00</span>
+                <a id="expand-player-btn" href="{% url 'play_focus' %}" class="btn btn-outline-secondary btn-sm ms-2" title="Expand Player">
+                    <i class="fas fa-expand-alt"></i>
+                </a>
             </div>
             <audio id="audio-player" class="d-none"></audio>
         </div>

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Transcripts Dashboard</h2>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Track</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transcript in transcripts %}
+                <tr>
+                    <td>{{ transcript.track.name }}</td>
+                    <td>
+                        <span class="badge {% if transcript.status == 'completed' %}bg-success{% elif transcript.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ transcript.status|title }}
+                        </span>
+                    </td>
+                    <td>{{ transcript.created_at|date:"M d, Y H:i" }}</td>
+                    <td>{{ transcript.updated_at|date:"M d, Y H:i" }}</td>
+                    <td>
+                        <a href="{% url 'edit_track' transcript.track.id %}" class="btn btn-sm btn-outline-primary">Edit Track</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">No transcripts found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

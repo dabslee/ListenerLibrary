@@ -40,6 +40,24 @@ class Track(models.Model):
     def __str__(self):
         return self.name
 
+class Transcript(models.Model):
+    track = models.OneToOneField(Track, on_delete=models.CASCADE, related_name='transcript')
+    content = models.TextField() # Stores the SRT content
+    source_file = models.FileField(upload_to='transcripts/', null=True, blank=True)
+    status_choices = (
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    )
+    status = models.CharField(max_length=20, choices=status_choices, default='pending')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    error_message = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Transcript for {self.track.name}"
+
 
 class UserPlaybackState(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
