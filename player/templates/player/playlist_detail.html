@@ -40,7 +40,12 @@
                             <div>
                                 <h6 class="mb-0">
                                     {{ item.track.name }}
-                                    {% if item.track.get_type_display == 'Podcast' %} <i class="fas fa-book ms-2 text-secondary"></i> {% endif %}
+                                    {% if item.track.get_type_display == 'Podcast' %}
+                                        <i class="fas fa-book ms-2 text-secondary" data-bs-toggle="tooltip" title="Podcast"></i>
+                                        {% if item.track.transcript %}
+                                            <i class="fas fa-font ms-1 text-secondary" data-bs-toggle="tooltip" title="Transcribed"></i>
+                                        {% endif %}
+                                    {% endif %}
                                 </h6>
                                 {% if item.track.artist %}
                                     <small class="text-muted">By {{ item.track.artist }}</small>
@@ -132,6 +137,18 @@ let playlistData = [
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    function initTooltips() {
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipElements.forEach(el => {
+            const existing = bootstrap.Tooltip.getInstance(el);
+            if (existing) {
+                existing.dispose();
+            }
+            new bootstrap.Tooltip(el);
+        });
+    }
+    initTooltips();
+
     let playlistIdToRemove = null;
     let trackIdToRemove = null;
 

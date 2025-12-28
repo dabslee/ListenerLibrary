@@ -19,7 +19,12 @@
                 <div>
                     <h6 class="mb-1">
                         {{ track.name }}
-                        {% if track.get_type_display == 'Podcast' %} <i class="fas fa-book ms-2 text-secondary"></i> {% endif %}
+                        {% if track.get_type_display == 'Podcast' %}
+                            <i class="fas fa-book ms-2 text-secondary" data-bs-toggle="tooltip" title="Podcast"></i>
+                            {% if track.transcript %}
+                                <i class="fas fa-font ms-1 text-secondary" data-bs-toggle="tooltip" title="Transcribed"></i>
+                            {% endif %}
+                        {% endif %}
                     </h6>
                     {% if track.artist %}
                         <p class="mb-1"><small class="text-muted">By {{ track.artist }}</small></p>

@@ -26,7 +26,7 @@ from django.conf import settings
 @login_required
 def track_list(request):
     # Initial query
-    tracks_query = Track.objects.filter(owner=request.user).prefetch_related('playlists')
+    tracks_query = Track.objects.filter(owner=request.user).select_related('transcript').prefetch_related('playlists')
 
     # Filtering
     title_search_query = request.GET.get('search_title') or request.GET.get('search')
@@ -147,9 +147,33 @@ def register(request):
 def upload_track(request):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
+    request_transcript_checked = False
+    transcript_form = TranscriptUploadForm()
+    transcript_form.fields['source_file'].required = False
+
     if request.method == 'POST':
         form = TrackForm(request.POST, request.FILES)
-        if form.is_valid():
+        transcript_form = TranscriptUploadForm(request.POST, request.FILES)
+        transcript_form.fields['source_file'].required = False
+        request_transcript = request.POST.get('request_transcript') == 'on'
+        request_transcript_checked = request_transcript
+        transcript_file = request.FILES.get('source_file')
+        transcript_error = None
+        transcript_content = None
+
+        if transcript_file:
+            if not transcript_file.name.lower().endswith('.srt'):
+                transcript_error = "Only .srt files are supported for upload."
+            else:
+                try:
+                    transcript_content = transcript_file.read().decode('utf-8')
+                    pysrt.from_string(transcript_content)
+                except Exception as e:
+                    transcript_error = f"Invalid SRT file: {e}"
+                finally:
+                    transcript_file.seek(0)
+
+        if form.is_valid() and not transcript_error:
             track = form.save(commit=False)
             track.owner = request.user
 
@@ -177,6 +201,26 @@ def upload_track(request):
 
             track.save()
 
+            if transcript_file and not transcript_error:
+                transcript = Transcript(
+                    track=track,
+                    source_file=transcript_file,
+                    content=transcript_content or ''
+                )
+                transcript.status = 'completed'
+                transcript.error_message = None
+                transcript.save()
+            elif request_transcript:
+                Transcript.objects.update_or_create(
+                    track=track,
+                    defaults={
+                        'status': 'pending',
+                        'source_file': None,
+                        'error_message': None,
+                        'content': ''
+                    }
+                )
+
             if is_ajax:
                 return JsonResponse({
                     'status': 'success',
@@ -185,12 +229,21 @@ def upload_track(request):
                 })
             return redirect('track_list')
         else:
+            if transcript_error:
+                transcript_form.add_error('source_file', transcript_error)
             if is_ajax:
-                return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
+                errors = form.errors.get_json_data()
+                transcript_errors = transcript_form.errors.get_json_data()
+                errors.update(transcript_errors)
+                return JsonResponse({'status': 'error', 'errors': errors}, status=400)
     else:
         form = TrackForm()
 
-    return render(request, 'player/upload_track.html', {'form': form})
+    return render(request, 'player/upload_track.html', {
+        'form': form,
+        'transcript_form': transcript_form,
+        'request_transcript_checked': request_transcript_checked
+    })
 
 @login_required
 @require_POST
@@ -369,7 +422,7 @@ def create_playlist(request):
 def playlist_detail(request, playlist_id):
     playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
     # Use select_related to fetch track details efficiently to prevent N+1 queries
-    playlist_items = playlist.playlistitem_set.select_related('track').all()
+    playlist_items = playlist.playlistitem_set.select_related('track', 'track__transcript').all()
 
     # Get track IDs to fetch their progress in one go
     track_ids = [item.track.id for item in playlist_items]

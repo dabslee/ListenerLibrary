@@ -27,6 +27,21 @@
                 {% endfor %}
             </div>
 
+            <h5 class="mb-3 mt-5">Transcript (optional)</h5>
+            <div class="mb-3">
+                <label class="form-label" for="{{ transcript_form.source_file.id_for_label }}">Upload Existing Transcript (SRT)</label>
+                {{ transcript_form.source_file }}
+                {% for error in transcript_form.source_file.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="request-transcript-checkbox" name="request_transcript" {% if request_transcript_checked %}checked{% endif %}>
+                <label class="form-check-label" for="request-transcript-checkbox">
+                    Request Auto-Transcription
+                </label>
+            </div>
+
             <!-- Error container for AJAX responses -->
             <div id="error-container" class="alert alert-danger d-none" role="alert"></div>
 

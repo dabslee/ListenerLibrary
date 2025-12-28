@@ -10,6 +10,7 @@
                     <th>Track</th>
                     <th>Status</th>
                     <th>Created</th>
+                    <th>Processing Started</th>
                     <th>Updated</th>
                     <th>Actions</th>
                 </tr>
@@ -22,6 +23,7 @@
                         {% include "player/partials/transcript_status.html" %}
                     </td>
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.created_at|date:'c' }}">{{ transcript.created_at|date:"M d, Y H:i" }}</span></td>
+                    <td><span class="local-datetime" data-local-datetime="{{ transcript.processing_started_at|date:'c' }}">{{ transcript.processing_started_at|date:"M d, Y H:i" }}</span></td>
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.updated_at|date:'c' }}">{{ transcript.updated_at|date:"M d, Y H:i" }}</span></td>
                     <td>
                         <a href="{% url 'edit_track' transcript.track.id %}" class="btn btn-sm btn-outline-primary">Edit Track</a>

@@ -103,6 +103,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const trackListContainer = document.getElementById('track-list-container');
     const paginationContainer = document.getElementById('pagination-container');
 
+    function initTooltips() {
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipElements.forEach(el => {
+            const existing = bootstrap.Tooltip.getInstance(el);
+            if (existing) {
+                existing.dispose();
+            }
+            new bootstrap.Tooltip(el);
+        });
+    }
+    initTooltips();
+
     function fetchTracks(page) {
         const searchTitle = titleSearchInput.value;
         const searchTranscript = transcriptSearchInput.value;
@@ -128,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
             trackListContainer.innerHTML = data.track_html;
             paginationContainer.innerHTML = data.pagination_html;
             addDeleteModalListener();
+            initTooltips();
         })
         .catch(error => console.error('Error fetching tracks:', error));
     }
