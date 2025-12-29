@@ -43,6 +43,7 @@ class Command(BaseCommand):
 
     def process_transcript(self, transcript, model):
         self.stdout.write(f"Processing transcript for {transcript.track.name}...")
+        self.stdout.flush()
         transcript.status = 'processing'
         transcript.processing_started_at = timezone.now()
         transcript.save()
@@ -70,9 +71,11 @@ class Command(BaseCommand):
             transcript.status = 'completed'
             transcript.save()
             self.stdout.write(self.style.SUCCESS(f"Successfully transcribed {transcript.track.name}"))
+            self.stdout.flush()
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Error processing {transcript.track.name}: {e}"))
+            self.stdout.flush()
             transcript.status = 'failed'
             transcript.error_message = str(e)
             transcript.save()
