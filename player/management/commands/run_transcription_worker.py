@@ -28,6 +28,7 @@ class Command(BaseCommand):
             self.stdout.write("Whisper model loaded.")
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Failed to load Whisper model: {e}"))
+            self.stdout.flush()
             return
         
         self.stdout.flush()
@@ -35,6 +36,8 @@ class Command(BaseCommand):
             pending = Transcript.objects.filter(status='pending').first()
             if not pending:
                 # Sleep a bit to avoid hammering DB
+                self.stdout.write("Nothing pending.")
+                self.stdout.flush()
                 time.sleep(5)
                 continue
 
