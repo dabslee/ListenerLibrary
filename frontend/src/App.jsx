@@ -5,6 +5,7 @@ import './App.css';
 import Layout from './components/Layout';
 import TrackList from './pages/TrackList';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import PlaylistList from './pages/PlaylistList';
 import PlaylistDetail from './pages/PlaylistDetail';
 import api from './api';
@@ -41,6 +42,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
                <Route index element={<TrackList />} />
                <Route path="playlists" element={<PlaylistList />} />

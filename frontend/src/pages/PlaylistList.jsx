@@ -3,23 +3,33 @@ import { Card, Button, Row, Col, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaPlus, FaPlay } from 'react-icons/fa';
 import api from '../api';
+import PlaylistFormModal from '../components/PlaylistFormModal';
 
 function PlaylistList() {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    api.get('/playlists/')
-       .then(res => setPlaylists(res.data.results || res.data))
-       .catch(err => console.error(err))
-       .finally(() => setLoading(false));
+    fetchPlaylists();
   }, []);
+
+  const fetchPlaylists = async () => {
+    try {
+        const res = await api.get('/playlists/');
+        setPlaylists(res.data.results || res.data);
+    } catch (err) {
+        console.error(err);
+    } finally {
+        setLoading(false);
+    }
+  };
 
   return (
     <div className="p-3">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="mb-0">Playlists</h2>
-        <Button variant="success" className="d-flex align-items-center gap-2">
+        <Button variant="success" className="d-flex align-items-center gap-2" onClick={() => setShowModal(true)}>
             <FaPlus /> Create Playlist
         </Button>
       </div>
@@ -40,7 +50,11 @@ function PlaylistList() {
                         <Button
                             variant="primary"
                             className="position-absolute bottom-0 end-0 m-3 rounded-circle d-flex align-items-center justify-content-center shadow"
-                            style={{width: 40, height: 40}}
+                            style={{width: 40, height: 40, zIndex: 2}}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                // Logic to play full playlist
+                            }}
                         >
                             <FaPlay style={{marginLeft: 2}} />
                         </Button>
@@ -57,6 +71,12 @@ function PlaylistList() {
             ))}
           </Row>
       )}
+
+      <PlaylistFormModal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        onSuccess={() => { setShowModal(false); fetchPlaylists(); }}
+      />
     </div>
   );
 }
