@@ -20,6 +20,11 @@ class PlaylistForm(forms.ModelForm):
 class PlaylistUploadForm(forms.Form):
     name = forms.CharField(max_length=255, widget=forms.TextInput(attrs={'class': 'form-control'}))
     image = forms.ImageField(required=False, widget=forms.FileInput(attrs={'class': 'form-control'}))
+    default_track_type = forms.ChoiceField(
+        choices=Track.TYPE_CHOICES,
+        initial='song',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
     default_track_icon = forms.ImageField(required=False, widget=forms.FileInput(attrs={'class': 'form-control'}))
 
 class BookmarkForm(forms.ModelForm):

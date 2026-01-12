@@ -16,7 +16,7 @@ from .models import Track, UserPlaybackState, PodcastProgress, Playlist, Playlis
 from mutagen import File as MutagenFile
 import pysrt
 from django.utils import timezone
-from django.db import models
+from django.db import models, transaction
 from wsgiref.util import FileWrapper
 from django.http import HttpResponse
 from django.urls import reverse
@@ -517,41 +517,65 @@ def upload_playlist(request):
     if request.method == 'POST':
         form = PlaylistUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            playlist = Playlist.objects.create(
-                name=form.cleaned_data['name'],
-                owner=request.user,
-                image=form.cleaned_data['image']
-            )
-
             uploaded_tracks = request.FILES.getlist('tracks')
-            default_icon = form.cleaned_data['default_track_icon']
+            if not uploaded_tracks:
+                form.add_error(None, "Please select at least one track file.")
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
+                return render(request, 'player/upload_playlist.html', {'form': form})
 
-            for order, audio_file in enumerate(uploaded_tracks):
-                track_name = os.path.splitext(audio_file.name)[0]
+            current_storage_usage = Track.objects.filter(owner=request.user).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+            total_new_size = sum(audio_file.size for audio_file in uploaded_tracks)
+            user_storage_limit_bytes = request.user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
+            if current_storage_usage + total_new_size > user_storage_limit_bytes:
+                form.add_error(None, f"Uploading these tracks would exceed your {request.user.userprofile.storage_limit_gb}GB storage limit.")
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'errors': form.errors.get_json_data()}, status=400)
+                return render(request, 'player/upload_playlist.html', {'form': form})
 
-                try:
-                    audio = MutagenFile(audio_file)
-                    duration = audio.info.length if audio else 0
-                except Exception:
-                    duration = 0
-                finally:
-                    audio_file.seek(0)
+            try:
+                with transaction.atomic():
+                    playlist = Playlist.objects.create(
+                        name=form.cleaned_data['name'],
+                        owner=request.user,
+                        image=form.cleaned_data['image']
+                    )
 
-                track = Track.objects.create(
-                    name=track_name,
-                    owner=request.user,
-                    file=audio_file,
-                    icon=default_icon,
-                    duration=duration,
-                    file_size=audio_file.size,
-                    type='song'
-                )
+                    default_icon = form.cleaned_data['default_track_icon']
+                    default_type = form.cleaned_data['default_track_type']
 
-                PlaylistItem.objects.create(
-                    playlist=playlist,
-                    track=track,
-                    order=order
-                )
+                    for order, audio_file in enumerate(uploaded_tracks):
+                        track_name = os.path.splitext(audio_file.name)[0]
+
+                        try:
+                            audio = MutagenFile(audio_file)
+                            duration = audio.info.length if audio else 0
+                        except Exception:
+                            duration = 0
+                        finally:
+                            audio_file.seek(0)
+
+                        track = Track.objects.create(
+                            name=track_name,
+                            owner=request.user,
+                            file=audio_file,
+                            icon=default_icon,
+                            duration=duration,
+                            file_size=audio_file.size,
+                            type=default_type
+                        )
+
+                        PlaylistItem.objects.create(
+                            playlist=playlist,
+                            track=track,
+                            order=order
+                        )
+            except Exception:
+                logging.exception("Error uploading playlist")
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'errors': {'__all__': ['An error occurred while uploading your playlist. Please try again.']}}, status=500)
+                form.add_error(None, "An error occurred while uploading your playlist. Please try again.")
+                return render(request, 'player/upload_playlist.html', {'form': form})
 
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': 'Playlist uploaded successfully!', 'redirect_url': reverse('playlist_list')})
