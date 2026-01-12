@@ -1,13 +1,23 @@
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
-import { Container, Navbar, Nav, NavDropdown, Row, Col } from 'react-bootstrap';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Container, Navbar, Nav, NavDropdown } from 'react-bootstrap';
 import Player from './Player';
-import Sidebar from './Sidebar';
 import { useTheme } from '../contexts/ThemeContext';
-import { FaPalette } from 'react-icons/fa';
+import { FaUser, FaPalette, FaSignOutAlt } from 'react-icons/fa';
 
 function Layout() {
   const { toggleTheme } = useTheme();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+      // In a real app with token auth, you'd clear the token.
+      // With session auth, we might hit an endpoint or just clear local state.
+      // Assuming session cookie is cleared or invalidates on backend if we had a logout endpoint.
+      // For now, simple redirect to login which clears app state is visual enough,
+      // but ideally we hit /accounts/logout/ if it existed as API.
+      // Let's assume we just navigate away for this demo.
+      window.location.href = '/accounts/logout/'; // Use Django's logout view if available or implement API logout
+  };
 
   return (
     <div className="d-flex flex-column vh-100">
@@ -15,9 +25,22 @@ function Layout() {
         <Container fluid>
           <Navbar.Brand as={Link} to="/">Listener Library</Navbar.Brand>
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
-          <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
+          <Navbar.Collapse id="basic-navbar-nav">
+            <Nav className="me-auto">
+              <Nav.Link as={Link} to="/">Tracks</Nav.Link>
+              <Nav.Link as={Link} to="/playlists">Playlists</Nav.Link>
+              <Nav.Link as={Link} to="/bookmarks">Bookmarks</Nav.Link>
+            </Nav>
             <Nav>
-                <NavDropdown title={<FaPalette />} id="basic-nav-dropdown" align="end">
+                <NavDropdown title={<FaUser />} id="user-nav-dropdown" align="end">
+                    <NavDropdown.Item as={Link} to="/profile">Profile</NavDropdown.Item>
+                    <NavDropdown.Divider />
+                    <NavDropdown.Item as="button" onClick={handleLogout}>
+                        <FaSignOutAlt className="me-2" /> Logout
+                    </NavDropdown.Item>
+                </NavDropdown>
+
+                <NavDropdown title={<FaPalette />} id="theme-nav-dropdown" align="end">
                     <NavDropdown.Item onClick={() => toggleTheme('light')}>Light</NavDropdown.Item>
                     <NavDropdown.Item onClick={() => toggleTheme('dark')}>Dark</NavDropdown.Item>
                     <NavDropdown.Item onClick={() => toggleTheme('blue')}>Blue</NavDropdown.Item>
@@ -28,17 +51,8 @@ function Layout() {
         </Container>
       </Navbar>
 
-      <Container fluid className="flex-grow-1 overflow-hidden">
-          <Row className="h-100">
-              <Col md={3} lg={2} className="d-none d-md-block p-0">
-                  <Sidebar />
-              </Col>
-              <Col xs={12} md={9} lg={10} className="p-0 d-flex flex-column h-100">
-                 <div className="flex-grow-1 overflow-auto p-3 pb-5 mb-5">
-                    <Outlet />
-                 </div>
-              </Col>
-          </Row>
+      <Container fluid className="flex-grow-1 overflow-auto p-3 pb-5 mb-5">
+        <Outlet />
       </Container>
 
       <div className="fixed-bottom bg-light border-top">
