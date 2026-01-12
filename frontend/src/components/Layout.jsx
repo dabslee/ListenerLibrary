@@ -55,7 +55,7 @@ function Layout() {
         <Outlet />
       </Container>
 
-      <div className="fixed-bottom bg-light border-top">
+      <div className="fixed-bottom border-top">
         <Player />
       </div>
     </div>

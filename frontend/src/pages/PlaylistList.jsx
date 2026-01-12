@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Row, Col, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaPlus, FaPlay } from 'react-icons/fa';
+import { FaPlus, FaPlay, FaUpload } from 'react-icons/fa';
 import api from '../api';
 import PlaylistFormModal from '../components/PlaylistFormModal';
+import PlaylistUploadModal from '../components/PlaylistUploadModal';
 
 function PlaylistList() {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     fetchPlaylists();
@@ -29,9 +31,14 @@ function PlaylistList() {
     <div className="p-3">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="mb-0">Playlists</h2>
-        <Button variant="success" className="d-flex align-items-center gap-2" onClick={() => setShowModal(true)}>
-            <FaPlus /> Create Playlist
-        </Button>
+        <div className="d-flex gap-2">
+            <Button variant="outline-primary" className="d-flex align-items-center gap-2" onClick={() => setShowUploadModal(true)}>
+                <FaUpload /> Upload Playlist
+            </Button>
+            <Button variant="success" className="d-flex align-items-center gap-2" onClick={() => setShowCreateModal(true)}>
+                <FaPlus /> Create Playlist
+            </Button>
+        </div>
       </div>
 
       {loading ? <div>Loading...</div> : (
@@ -73,9 +80,15 @@ function PlaylistList() {
       )}
 
       <PlaylistFormModal
-        show={showModal}
-        onHide={() => setShowModal(false)}
-        onSuccess={() => { setShowModal(false); fetchPlaylists(); }}
+        show={showCreateModal}
+        onHide={() => setShowCreateModal(false)}
+        onSuccess={() => { setShowCreateModal(false); fetchPlaylists(); }}
+      />
+
+      <PlaylistUploadModal
+        show={showUploadModal}
+        onHide={() => setShowUploadModal(false)}
+        onSuccess={() => { setShowUploadModal(false); fetchPlaylists(); }}
       />
     </div>
   );

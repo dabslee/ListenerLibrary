@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Form, InputGroup, Dropdown, Modal, Row, Col } from 'react-bootstrap';
-import { FaPlay, FaEllipsisV, FaUpload, FaSearch, FaFilter, FaCheck, FaTrash } from 'react-icons/fa';
+import { Table, Button, Form, InputGroup, Dropdown, Modal, Row, Col, Pagination } from 'react-bootstrap';
+import { FaPlay, FaEllipsisV, FaUpload, FaSearch, FaFilter, FaCheck, FaTrash, FaDownload, FaFileAlt } from 'react-icons/fa';
 import api from '../api';
 import TrackFormModal from '../components/TrackFormModal';
+import AddToPlaylistModal from '../components/AddToPlaylistModal';
+import TranscriptViewerModal from '../components/TranscriptViewerModal';
 
 function TrackList() {
   const [tracks, setTracks] = useState([]);
@@ -13,6 +15,10 @@ function TrackList() {
   const [playlistFilter, setPlaylistFilter] = useState('');
   const [sortOption, setSortOption] = useState('name');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [artists, setArtists] = useState([]);
   const [playlists, setPlaylists] = useState([]);
 
@@ -21,35 +27,36 @@ function TrackList() {
   const [editTrack, setEditTrack] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [trackToDelete, setTrackToDelete] = useState(null);
+  const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
+  const [trackForPlaylist, setTrackForPlaylist] = useState(null);
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
+  const [trackForTranscript, setTrackForTranscript] = useState(null);
 
   useEffect(() => {
     fetchMetadata();
   }, []);
 
   useEffect(() => {
-    fetchTracks();
+    fetchTracks(1);
   }, [searchTitle, searchTranscript, artistFilter, playlistFilter, sortOption]);
+
+  useEffect(() => {
+      fetchTracks(currentPage);
+  }, [currentPage]);
 
   const fetchMetadata = async () => {
       try {
           const [plRes, trRes] = await Promise.all([
               api.get('/playlists/'),
-              api.get('/tracks/') // Using default to get all for extracting artists?
-              // Better to have a dedicated metadata endpoint, but for now filtering from tracks response or separate call
+              api.get('/tracks/')
           ]);
           setPlaylists(plRes.data.results || plRes.data);
-
-          // Extract artists manually or use a specific endpoint if exists.
-          // Since API doesn't have unique artists endpoint, we might rely on what we get.
-          // Or just let user type? Original had a dropdown.
-          // Let's stick to what the API provides or mock it for now.
-          // Ideally backend provides 'artists' list.
           const uniqueArtists = [...new Set((trRes.data.results || trRes.data).map(t => t.artist).filter(Boolean))];
           setArtists(uniqueArtists.sort());
       } catch (e) { console.error(e); }
   };
 
-  const fetchTracks = async () => {
+  const fetchTracks = async (page) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -58,9 +65,18 @@ function TrackList() {
       if (artistFilter) params.append('artist', artistFilter);
       if (playlistFilter) params.append('playlist', playlistFilter);
       if (sortOption) params.append('ordering', sortOption === 'last_played' ? '-usertracklastplayed__last_played' : 'name');
+      params.append('page', page);
 
       const response = await api.get(`/tracks/?${params.toString()}`);
-      setTracks(response.data.results || response.data);
+      if (response.data.results) {
+          setTracks(response.data.results);
+          // DRF default PageNumberPagination returns 'count'
+          // Assuming default page size is 10 (as per views.py Paginator(tracks_query, 10))
+          setTotalPages(Math.ceil(response.data.count / 10));
+      } else {
+          setTracks(response.data);
+          setTotalPages(1);
+      }
     } catch (error) {
       console.error('Error fetching tracks:', error);
     } finally {
@@ -78,7 +94,7 @@ function TrackList() {
       if (!trackToDelete) return;
       try {
           await api.post(`/tracks/${trackToDelete.id}/delete_track/`);
-          fetchTracks();
+          fetchTracks(currentPage);
           setShowDeleteModal(false);
           setTrackToDelete(null);
       } catch (e) {
@@ -97,12 +113,27 @@ function TrackList() {
       setShowUploadModal(true);
   };
 
+  const openAddToPlaylistModal = (track) => {
+      setTrackForPlaylist(track);
+      setShowAddToPlaylistModal(true);
+  };
+
+  const openTranscriptModal = (track) => {
+      setTrackForTranscript(track);
+      setShowTranscriptModal(true);
+  };
+
+  const handlePageChange = (page) => {
+      if (page >= 1 && page <= totalPages) {
+          setCurrentPage(page);
+      }
+  };
+
   return (
     <div className="p-3">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Your Tracks</h2>
         <div className="d-flex flex-column flex-md-row align-items-md-center gap-3">
-            {/* Storage Usage Placeholder - needs Profile API integration */}
             <span className="small fst-italic text-muted">Storage usage info...</span>
             <Button variant="primary" onClick={() => { setEditTrack(null); setShowUploadModal(true); }}>
                 <FaUpload className="me-1" /> Upload Track
@@ -110,7 +141,7 @@ function TrackList() {
         </div>
       </div>
 
-      <div className="card bg-light mb-4">
+      <div className="card mb-4">
         <div className="card-body">
             <Form onSubmit={(e) => e.preventDefault()}>
                 <Row className="g-3 align-items-end">
@@ -119,12 +150,12 @@ function TrackList() {
                         <Form.Control
                             placeholder="Keyword..."
                             value={searchTitle}
-                            onChange={(e) => setSearchTitle(e.target.value)}
+                            onChange={(e) => { setSearchTitle(e.target.value); setCurrentPage(1); }}
                         />
                     </Col>
                     <Col md={3}>
                         <Form.Label>Artist</Form.Label>
-                        <Form.Select value={artistFilter} onChange={(e) => setArtistFilter(e.target.value)}>
+                        <Form.Select value={artistFilter} onChange={(e) => { setArtistFilter(e.target.value); setCurrentPage(1); }}>
                             <option value="">All Artists</option>
                             {artists.map(artist => (
                                 <option key={artist} value={artist}>{artist}</option>
@@ -133,7 +164,7 @@ function TrackList() {
                     </Col>
                     <Col md={3}>
                         <Form.Label>Playlist</Form.Label>
-                        <Form.Select value={playlistFilter} onChange={(e) => setPlaylistFilter(e.target.value)}>
+                        <Form.Select value={playlistFilter} onChange={(e) => { setPlaylistFilter(e.target.value); setCurrentPage(1); }}>
                             <option value="">All Tracks</option>
                             {playlists.map(p => (
                                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -142,7 +173,7 @@ function TrackList() {
                     </Col>
                     <Col md={2}>
                         <Form.Label>Sort By</Form.Label>
-                        <Form.Select value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
+                        <Form.Select value={sortOption} onChange={(e) => { setSortOption(e.target.value); setCurrentPage(1); }}>
                             <option value="name">Alphabetical</option>
                             <option value="last_played">Last Played</option>
                         </Form.Select>
@@ -154,7 +185,7 @@ function TrackList() {
                         <Form.Control
                             placeholder="Transcript text..."
                             value={searchTranscript}
-                            onChange={(e) => setSearchTranscript(e.target.value)}
+                            onChange={(e) => { setSearchTranscript(e.target.value); setCurrentPage(1); }}
                         />
                     </Col>
                 </Row>
@@ -165,7 +196,8 @@ function TrackList() {
       {loading ? (
         <div className="text-center py-5">Loading...</div>
       ) : (
-        <div className="list-group">
+        <>
+        <div className="list-group mb-3">
             {tracks.map((track) => (
               <div key={track.id} className="list-group-item list-group-item-action d-flex align-items-center p-2">
                   <div className="me-3 position-relative" style={{width: 50, height: 50, flexShrink: 0}}>
@@ -185,7 +217,6 @@ function TrackList() {
                           <small className="text-muted ms-2">{track.duration ? new Date(track.duration * 1000).toISOString().substr(14, 5) : '--:--'}</small>
                       </div>
                       <div className="small text-muted text-truncate">{track.artist || 'Unknown'}</div>
-                      {/* Progress bar for podcasts */}
                       {track.type === 'podcast' && track.progress_percentage > 0 && (
                           <div className="progress mt-1" style={{height: '3px'}}>
                               <div className="progress-bar" role="progressbar" style={{width: `${track.progress_percentage}%`}}></div>
@@ -199,8 +230,10 @@ function TrackList() {
                             </Dropdown.Toggle>
                             <Dropdown.Menu>
                                 <Dropdown.Item onClick={() => handlePlay(track)}>Play</Dropdown.Item>
-                                {/* Add to Playlist logic needs sub-menu or modal */}
+                                <Dropdown.Item onClick={() => openAddToPlaylistModal(track)}>Add to Playlist</Dropdown.Item>
+                                <Dropdown.Item onClick={() => openTranscriptModal(track)}>Transcript</Dropdown.Item>
                                 <Dropdown.Item onClick={() => openEditModal(track)}>Edit</Dropdown.Item>
+                                <Dropdown.Item href={track.file_url} download target="_blank">Download</Dropdown.Item>
                                 <Dropdown.Divider />
                                 <Dropdown.Item className="text-danger" onClick={() => openDeleteModal(track)}>Delete</Dropdown.Item>
                             </Dropdown.Menu>
@@ -209,17 +242,53 @@ function TrackList() {
               </div>
             ))}
         </div>
+
+        {totalPages > 1 && (
+            <Pagination className="justify-content-center">
+                <Pagination.First onClick={() => handlePageChange(1)} disabled={currentPage === 1} />
+                <Pagination.Prev onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
+
+                {/* Simplified logic: Show window around current page */}
+                {[...Array(totalPages)].map((_, i) => {
+                    const p = i + 1;
+                    if (p === 1 || p === totalPages || (p >= currentPage - 2 && p <= currentPage + 2)) {
+                        return (
+                            <Pagination.Item key={p} active={p === currentPage} onClick={() => handlePageChange(p)}>
+                                {p}
+                            </Pagination.Item>
+                        );
+                    } else if (p === currentPage - 3 || p === currentPage + 3) {
+                        return <Pagination.Ellipsis key={p} disabled />;
+                    }
+                    return null;
+                })}
+
+                <Pagination.Next onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
+                <Pagination.Last onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />
+            </Pagination>
+        )}
+        </>
       )}
 
-      {/* Upload/Edit Modal */}
       <TrackFormModal
         show={showUploadModal}
         onHide={() => setShowUploadModal(false)}
-        onSuccess={() => { setShowUploadModal(false); fetchTracks(); }}
+        onSuccess={() => { setShowUploadModal(false); fetchTracks(currentPage); }}
         track={editTrack}
       />
 
-      {/* Delete Confirmation Modal */}
+      <AddToPlaylistModal
+        show={showAddToPlaylistModal}
+        onHide={() => setShowAddToPlaylistModal(false)}
+        trackId={trackForPlaylist?.id}
+      />
+
+      <TranscriptViewerModal
+        show={showTranscriptModal}
+        onHide={() => setShowTranscriptModal(false)}
+        track={trackForTranscript}
+      />
+
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
         <Modal.Header closeButton>
             <Modal.Title>Confirm Deletion</Modal.Title>

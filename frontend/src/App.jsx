@@ -12,6 +12,7 @@ import api from './api';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Bookmarks from './pages/Bookmarks';
 import Profile from './pages/Profile';
+import PlayFocus from './pages/PlayFocus';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null); // null means checking
@@ -43,6 +44,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/play-focus" element={isAuthenticated ? <PlayFocus /> : <Navigate to="/login" />} />
+
             <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
                <Route index element={<TrackList />} />
                <Route path="playlists" element={<PlaylistList />} />

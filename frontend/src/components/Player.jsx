@@ -155,28 +155,27 @@ function Player() {
   if (!currentTrack) return <div className="p-3 text-center text-muted bg-light border-top">No track selected</div>;
 
   return (
-    <Container fluid className="py-2 bg-light">
-      <Row className="align-items-center">
-        <Col xs={12} md={4} className="d-flex align-items-center mb-2 mb-md-0 px-4">
-             {currentTrack.icon_url && <img src={currentTrack.icon_url} alt="cover" style={{width: 60, height: 60, marginRight: 15, borderRadius: 4}} />}
-             <div className="text-truncate">
-                <div className="fw-bold text-truncate">{currentTrack.name}</div>
-                <div className="small text-muted text-truncate fst-italic">{currentTrack.artist}</div>
-                {/* Playlist info placeholder if available */}
-             </div>
-        </Col>
+    <footer className="fixed-bottom border-top py-2">
+      <div className="row align-items-center py-3 px-5">
+        <div className="d-flex flex-md-row flex-column align-items-center justify-content-between gap-4">
+            <div className="d-flex align-items-center col-md-4">
+                {currentTrack.icon_url && <img src={currentTrack.icon_url} className="me-4" style={{width: 60, height: 60, display: 'block', borderRadius: 4}} />}
+                <div>
+                    <span className="fw-bold">{currentTrack.name}</span>
+                    <br/>
+                    <span className="text-muted fst-italic">{currentTrack.artist}</span>
+                </div>
+            </div>
 
-        <Col xs={12} md={4} className="d-flex flex-column align-items-center">
-            <div className="d-flex justify-content-center align-items-center mb-1 gap-1">
-                <Button variant="link" className="text-secondary btn-sm"><FaStepBackward /></Button>
-                <Button variant="link" className="text-secondary btn-sm"><FaRandom /></Button>
-                <Button variant="primary" className="mx-2 btn-sm px-3" onClick={togglePlay}>
+            <div className="player-buttons-group d-flex align-items-center gap-1">
+                <Button variant="secondary" size="sm" className="btn-secondary btn-sm"><FaStepBackward /></Button>
+                <Button variant="primary" size="sm" className="btn-primary btn-sm" onClick={togglePlay}>
                     {isPlaying ? <FaPause /> : <FaPlay />}
                 </Button>
-                <Button variant="link" className="text-secondary btn-sm"><FaStepForward /></Button>
+                <Button variant="secondary" size="sm" className="btn-secondary btn-sm"><FaStepForward /></Button>
 
                 <Dropdown drop="up">
-                    <Dropdown.Toggle variant="link" className="text-secondary btn-sm no-caret">
+                    <Dropdown.Toggle variant="secondary" size="sm" className="btn-secondary btn-sm no-caret">
                         {playbackSpeed}x
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
@@ -189,36 +188,23 @@ function Player() {
                 </Dropdown>
             </div>
 
-            <div className="d-flex align-items-center w-100 gap-2">
-                 <span className="small text-muted" style={{width: 40, textAlign: 'right'}}>{formatTime(currentTime)}</span>
+            <div className="seek-bar-group d-flex align-items-center gap-1 flex-grow-1">
+                 <span className="time-display">{formatTime(currentTime)}</span>
                  <input
                     type="range"
-                    className="form-range flex-grow-1"
+                    className="form-range mx-2"
                     min={0}
                     max={duration || 100}
                     value={currentTime}
                     onChange={(e) => { audioRef.current.currentTime = e.target.value; setCurrentTime(e.target.value); }}
                  />
-                 <span className="small text-muted" style={{width: 40}}>{formatTime(duration)}</span>
-                 {/* Expand Button */}
-                 <Button variant="outline-secondary" size="sm" className="ms-2 border-0">
+                 <span className="time-display">{formatTime(duration)}</span>
+                 <Link to="/play-focus" className="btn btn-outline-secondary btn-sm ms-2" title="Expand Player">
                     <FaExpandAlt />
-                 </Button>
+                 </Link>
             </div>
-        </Col>
-
-        <Col xs={12} md={4} className="d-none d-md-flex justify-content-end align-items-center px-4 gap-2">
-            {sleepTimerRemaining !== null ? (
-                <Button variant="outline-primary" size="sm" onClick={() => setShowSleepTimer(true)}>
-                    <FaClock className="me-1" /> {Math.floor(sleepTimerRemaining / 60)}:{String(sleepTimerRemaining % 60).padStart(2, '0')}
-                </Button>
-            ) : (
-                <Button variant="link" className="text-secondary" onClick={() => setShowSleepTimer(true)}>
-                    <FaClock />
-                </Button>
-            )}
-        </Col>
-      </Row>
+        </div>
+      </div>
 
       {/* Sleep Timer Modal */}
       <Modal show={showSleepTimer} onHide={() => setShowSleepTimer(false)} centered size="sm">
@@ -249,7 +235,7 @@ function Player() {
               )}
           </Modal.Body>
       </Modal>
-    </Container>
+    </footer>
   );
 }
 

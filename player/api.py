@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db import models
+from django.db import models, transaction
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login
 from .models import Track, Playlist, PlaylistItem, Bookmark, Transcript, UserPlaybackState, PodcastProgress, UserTrackLastPlayed, UserProfile
@@ -170,6 +170,55 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                 'position': podcast_progress_map.get(track.id, 0)
             })
         return Response(tracks_data)
+
+    @action(detail=False, methods=['post'])
+    def upload(self, request):
+        name = request.data.get('name')
+        uploaded_tracks = request.FILES.getlist('tracks')
+
+        if not uploaded_tracks:
+            return Response({'status': 'error', 'message': 'No files provided'}, status=400)
+
+        user = request.user
+
+        # Check total size
+        total_new_size = sum(f.size for f in uploaded_tracks)
+        current_storage_usage = Track.objects.filter(owner=user).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+        user_storage_limit_bytes = user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
+
+        if current_storage_usage + total_new_size > user_storage_limit_bytes:
+             return Response({'status': 'error', 'message': 'Storage limit exceeded'}, status=400)
+
+        try:
+            with transaction.atomic():
+                playlist = Playlist.objects.create(name=name, owner=user)
+
+                for order, audio_file in enumerate(uploaded_tracks):
+                    track_name = os.path.splitext(audio_file.name)[0]
+                    duration = 0
+                    try:
+                        audio_file.seek(0)
+                        audio = MutagenFile(audio_file)
+                        if audio:
+                            duration = audio.info.length
+                        audio_file.seek(0)
+                    except:
+                        pass
+
+                    track = Track.objects.create(
+                        name=track_name,
+                        owner=user,
+                        file=audio_file,
+                        duration=duration,
+                        file_size=audio_file.size,
+                        type='song' # Default
+                    )
+
+                    PlaylistItem.objects.create(playlist=playlist, track=track, order=order)
+
+            return Response({'status': 'success'})
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=500)
 
 class BookmarkViewSet(viewsets.ModelViewSet):
     serializer_class = BookmarkSerializer
