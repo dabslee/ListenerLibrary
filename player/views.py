@@ -570,11 +570,13 @@ def upload_playlist(request):
                             track=track,
                             order=order
                         )
-            except Exception:
+            except Exception as exc:
                 logging.exception("Error uploading playlist")
+                error_message = "An error occurred while uploading your playlist. Please try again."
+                error_message = f"{error_message} Details: {exc}"
                 if is_ajax:
-                    return JsonResponse({'status': 'error', 'errors': {'__all__': ['An error occurred while uploading your playlist. Please try again.']}}, status=500)
-                form.add_error(None, "An error occurred while uploading your playlist. Please try again.")
+                    return JsonResponse({'status': 'error', 'errors': {'__all__': [error_message]}}, status=500)
+                form.add_error(None, error_message)
                 return render(request, 'player/upload_playlist.html', {'form': form})
 
             if is_ajax:
