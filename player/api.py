@@ -4,31 +4,109 @@ from rest_framework.response import Response
 from django.db import models
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login
-from .models import Track, Playlist, PlaylistItem, Bookmark, Transcript, UserPlaybackState, PodcastProgress, UserTrackLastPlayed
-from .serializers import TrackSerializer, PlaylistSerializer, BookmarkSerializer, UserPlaybackStateSerializer, TranscriptSerializer
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.utils.decorators import method_decorator
+from .models import Track, Playlist, PlaylistItem, Bookmark, Transcript, UserPlaybackState, PodcastProgress, UserTrackLastPlayed, UserProfile
+from .serializers import TrackSerializer, PlaylistSerializer, BookmarkSerializer, UserPlaybackStateSerializer, TranscriptSerializer, UserProfileSerializer, UserRegistrationSerializer
+from django.utils import timezone
+from django.conf import settings
+from mutagen import File as MutagenFile
+import pysrt
+import os
 
 class TrackViewSet(viewsets.ModelViewSet):
     serializer_class = TrackSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'artist', 'transcript__content']
-    ordering_fields = ['name', 'artist', 'duration']
+    ordering_fields = ['name', 'artist', 'duration', 'usertracklastplayed__last_played']
 
     def get_queryset(self):
         user = self.request.user
         queryset = Track.objects.filter(owner=user).select_related('transcript')
+
+        selected_artist = self.request.query_params.get('artist')
+        selected_playlist_id = self.request.query_params.get('playlist')
+
+        if selected_artist:
+            queryset = queryset.filter(artist=selected_artist)
+        if selected_playlist_id:
+            queryset = queryset.filter(playlists__id=selected_playlist_id)
+
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        user = self.request.user
+        audio_file = self.request.FILES.get('file')
+
+        if audio_file:
+            new_track_size = audio_file.size
+            current_storage_usage = Track.objects.filter(owner=user).aggregate(total_size=models.Sum('file_size'))['total_size'] or 0
+            user_storage_limit_bytes = user.userprofile.storage_limit_gb * 1024 * 1024 * 1024
+
+            if current_storage_usage + new_track_size > user_storage_limit_bytes:
+                raise serializers.ValidationError(f"Storage limit exceeded. Limit: {user.userprofile.storage_limit_gb}GB")
+
+            duration = 0
+            try:
+                audio_file.seek(0)
+                audio = MutagenFile(audio_file)
+                if audio:
+                    duration = audio.info.length
+                audio_file.seek(0)
+            except Exception as e:
+                print(f"Error reading metadata: {e}")
+
+            serializer.save(owner=user, file_size=new_track_size, duration=duration)
+        else:
+             serializer.save(owner=user)
 
     @action(detail=True, methods=['post'])
     def delete_track(self, request, pk=None):
         track = self.get_object()
         track.delete()
         return Response({'status': 'success'})
+
+    @action(detail=True, methods=['get'])
+    def transcript(self, request, pk=None):
+        track = self.get_object()
+        try:
+            transcript = track.transcript
+            if transcript.status != 'completed':
+                 return Response({'status': 'unavailable'})
+
+            subs = pysrt.from_string(transcript.content)
+            data = []
+            for sub in subs:
+                data.append({
+                    'start': sub.start.ordinal / 1000.0,
+                    'end': sub.end.ordinal / 1000.0,
+                    'text': sub.text
+                })
+            return Response({'status': 'success', 'transcript': data})
+        except Transcript.DoesNotExist:
+            return Response({'status': 'unavailable'})
+
+    @action(detail=True, methods=['post'])
+    def upload_transcript(self, request, pk=None):
+        track = self.get_object()
+        file = request.FILES.get('file')
+        if not file or not file.name.endswith('.srt'):
+            return Response({'status': 'error', 'message': 'Invalid file'}, status=400)
+
+        try:
+            content = file.read().decode('utf-8')
+            pysrt.from_string(content)
+            Transcript.objects.update_or_create(
+                track=track,
+                defaults={
+                    'status': 'completed',
+                    'content': content,
+                    'source_file': file,
+                    'error_message': None
+                }
+            )
+            return Response({'status': 'success'})
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=400)
 
 class PlaylistViewSet(viewsets.ModelViewSet):
     serializer_class = PlaylistSerializer
@@ -69,6 +147,30 @@ class PlaylistViewSet(viewsets.ModelViewSet):
             PlaylistItem.objects.filter(playlist=playlist, track_id=t_id).update(order=index)
         return Response({'status': 'success'})
 
+    @action(detail=True, methods=['get'])
+    def tracks(self, request, pk=None):
+        playlist = self.get_object()
+        items = playlist.playlistitem_set.select_related('track').order_by('order')
+
+        track_ids = [item.track.id for item in items]
+        podcast_progress = PodcastProgress.objects.filter(user=request.user, track_id__in=track_ids)
+        podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
+
+        tracks_data = []
+        for item in items:
+            track = item.track
+            tracks_data.append({
+                'id': track.id,
+                'name': track.name,
+                'artist': track.artist,
+                'stream_url': request.build_absolute_uri(reverse('stream_track', args=[track.id])),
+                'icon_url': request.build_absolute_uri(track.icon.url) if track.icon else None,
+                'type': track.type,
+                'duration': track.duration,
+                'position': podcast_progress_map.get(track.id, 0)
+            })
+        return Response(tracks_data)
+
 class BookmarkViewSet(viewsets.ModelViewSet):
     serializer_class = BookmarkSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -94,6 +196,23 @@ class BookmarkViewSet(viewsets.ModelViewSet):
                  raise serializers.ValidationError("No playback state found")
         else:
             serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def play(self, request, pk=None):
+        bookmark = self.get_object()
+        if not bookmark.track:
+             return Response({'status': 'error', 'message': 'Bookmark has no associated track'}, status=404)
+
+        UserPlaybackState.objects.update_or_create(
+            user=request.user,
+            defaults={
+                'track': bookmark.track,
+                'last_played_position': bookmark.position,
+                'playlist': bookmark.playlist,
+                'shuffle': bookmark.shuffle
+            }
+        )
+        return Response({'status': 'success'})
 
 class UserPlaybackStateViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -145,6 +264,13 @@ class UserPlaybackStateViewSet(viewsets.ViewSet):
             return Response({'status': 'success'})
         return Response({'status': 'error', 'message': 'Missing track_id'}, status=400)
 
+class UserProfileViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request):
+        profile = request.user.userprofile
+        return Response(UserProfileSerializer(profile).data)
+
 class AuthViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny]
 
@@ -157,3 +283,12 @@ class AuthViewSet(viewsets.ViewSet):
             login(request, user)
             return Response({'status': 'success'})
         return Response({'status': 'error', 'message': 'Invalid credentials'}, status=400)
+
+    @action(detail=False, methods=['post'])
+    def register(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            login(request, user)
+            return Response({'status': 'success'})
+        return Response(serializer.errors, status=400)

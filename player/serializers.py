@@ -1,11 +1,47 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Track, Playlist, PlaylistItem, Bookmark, Transcript, UserPlaybackState, PodcastProgress
+from .models import Track, Playlist, PlaylistItem, Bookmark, Transcript, UserPlaybackState, PodcastProgress, UserProfile
+from django.conf import settings
+from django.db.models import Sum
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email']
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    password_confirmation = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'password_confirmation']
+
+    def validate(self, data):
+        if data['password'] != data['password_confirmation']:
+            raise serializers.ValidationError("Passwords do not match.")
+
+        # Check storage limit
+        total_storage_limit = UserProfile.objects.aggregate(Sum('storage_limit_gb'))['storage_limit_gb__sum'] or 0
+        if total_storage_limit + settings.DEFAULT_USER_STORAGE_LIMIT_GB > settings.STORAGE_LIMIT_GB_TOTAL:
+            raise serializers.ValidationError("Registration is currently disabled due to storage limitations.")
+
+        return data
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data.get('email', ''),
+            password=validated_data['password']
+        )
+        return user
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['storage_limit_gb', 'username']
 
 class TranscriptSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,6 +66,9 @@ class TrackSerializer(serializers.ModelSerializer):
 
     def get_position(self, obj):
         # This requires context to be passed to the serializer
+        if 'request' not in self.context:
+            return 0
+
         user = self.context['request'].user
         if not user.is_authenticated:
             return 0
@@ -84,6 +123,8 @@ class PlaylistSerializer(serializers.ModelSerializer):
     def get_tracks(self, obj):
         # Efficiently get tracks ordered by 'playlistitem__order'
         # We might need to paginate this if playlists are huge, but for now return all
+        # To avoid infinite recursion or heavy loads in list view, we might want to exclude full tracks details in list view
+        # For now, let's keep it but be aware.
         items = PlaylistItem.objects.filter(playlist=obj).order_by('order').select_related('track')
         return PlaylistItemSerializer(items, many=True, context=self.context).data
 
@@ -103,7 +144,27 @@ class BookmarkSerializer(serializers.ModelSerializer):
 class UserPlaybackStateSerializer(serializers.ModelSerializer):
     track = TrackSerializer(read_only=True)
     playlist = PlaylistSerializer(read_only=True)
+    trackId = serializers.IntegerField(source='track.id', read_only=True)
+    trackName = serializers.CharField(source='track.name', read_only=True)
+    trackArtist = serializers.CharField(source='track.artist', read_only=True)
+    trackIcon = serializers.SerializerMethodField()
+    trackStreamUrl = serializers.SerializerMethodField()
+    trackType = serializers.CharField(source='track.type', read_only=True)
+    position = serializers.FloatField(source='last_played_position')
+    duration = serializers.FloatField(source='track.duration', read_only=True)
 
     class Meta:
         model = UserPlaybackState
-        fields = ['user', 'track', 'last_played_position', 'shuffle', 'playlist']
+        fields = ['user', 'track', 'last_played_position', 'shuffle', 'playlist',
+                  'trackId', 'trackName', 'trackArtist', 'trackIcon', 'trackStreamUrl', 'trackType', 'position', 'duration']
+
+    def get_trackIcon(self, obj):
+        if obj.track and obj.track.icon:
+            return self.context['request'].build_absolute_uri(obj.track.icon.url)
+        return None
+
+    def get_trackStreamUrl(self, obj):
+        if obj.track:
+             from django.urls import reverse
+             return self.context['request'].build_absolute_uri(reverse('stream_track', args=[obj.track.id]))
+        return None
