@@ -121,6 +121,17 @@ def play_focus(request):
     return render(request, 'player/play_focus.html')
 
 @login_required
+def player_frame(request):
+    try:
+        playback_state = UserPlaybackState.objects.select_related('track').get(user=request.user)
+    except UserPlaybackState.DoesNotExist:
+        playback_state = None
+    context = {
+        'playback_state': playback_state
+    }
+    return render(request, 'player_frame.html', context)
+
+@login_required
 def profile(request):
     return render(request, 'registration/profile.html')
 

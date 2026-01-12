@@ -447,6 +447,14 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // --- EVENT LISTENERS ---
+    const expandPlayerBtn = document.getElementById('expand-player-btn');
+    if (expandPlayerBtn) {
+        expandPlayerBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            window.parent.postMessage({ action: 'expandPlayer' }, '*');
+        });
+    }
+
     if (playPauseBtn) {
         playPauseBtn.addEventListener('click', () => {
             if (audioPlayer && audioPlayer.src && audioPlayer.readyState > 0) {
@@ -736,4 +744,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initializePlayer();
     initializeSleepTimer();
+
+    window.addEventListener('message', function(event) {
+        if (event.data.action === 'playTrack') {
+            window.playTrack(
+                event.data.trackUrl,
+                event.data.trackName,
+                event.data.trackArtist,
+                event.data.iconUrl,
+                event.data.trackId,
+                event.data.trackType,
+                event.data.position,
+                event.data.duration
+            );
+        } else if (event.data.action === 'playPlaylist') {
+            window.playPlaylist(
+                event.data.playlistId,
+                event.data.playlistName,
+                event.data.playlistItems,
+                event.data.startIndex
+            );
+        }
+    });
 });
