@@ -3,6 +3,7 @@ import re
 import mimetypes
 import logging
 from django.core.paginator import Paginator
+from django.core.files.base import ContentFile
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
@@ -543,6 +544,12 @@ def upload_playlist(request):
 
                     default_icon = form.cleaned_data['default_track_icon']
                     default_type = form.cleaned_data['default_track_type']
+                    default_icon_bytes = None
+                    default_icon_name = None
+                    if default_icon:
+                        default_icon_bytes = default_icon.read()
+                        default_icon_name = os.path.basename(default_icon.name)
+                        default_icon.seek(0)
 
                     for order, audio_file in enumerate(uploaded_tracks):
                         track_name = os.path.splitext(audio_file.name)[0]
@@ -555,11 +562,15 @@ def upload_playlist(request):
                         finally:
                             audio_file.seek(0)
 
+                        icon_file = None
+                        if default_icon_bytes is not None:
+                            icon_file = ContentFile(default_icon_bytes, name=default_icon_name)
+
                         track = Track.objects.create(
                             name=track_name,
                             owner=request.user,
                             file=audio_file,
-                            icon=default_icon,
+                            icon=icon_file,
                             duration=duration,
                             file_size=audio_file.size,
                             type=default_type
@@ -570,13 +581,11 @@ def upload_playlist(request):
                             track=track,
                             order=order
                         )
-            except Exception as exc:
+            except Exception:
                 logging.exception("Error uploading playlist")
-                error_message = "An error occurred while uploading your playlist. Please try again."
-                error_message = f"{error_message} Details: {exc}"
                 if is_ajax:
-                    return JsonResponse({'status': 'error', 'errors': {'__all__': [error_message]}}, status=500)
-                form.add_error(None, error_message)
+                    return JsonResponse({'status': 'error', 'errors': {'__all__': ['An error occurred while uploading your playlist. Please try again.']}}, status=500)
+                form.add_error(None, "An error occurred while uploading your playlist. Please try again.")
                 return render(request, 'player/upload_playlist.html', {'form': form})
 
             if is_ajax:
