@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
         audioPlayer.addEventListener('play', () => {
             if (playPauseBtn) playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
             if (saveInterval) clearInterval(saveInterval);
-            saveInterval = setInterval(savePlaybackState, 5000);
+            saveInterval = setInterval(savePlaybackState, 1000);
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'playing';
             }
