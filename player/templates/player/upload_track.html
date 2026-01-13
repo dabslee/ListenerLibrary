@@ -1,57 +1,59 @@
-{% extends "base.html" %}
+{% extends "content_base.html" %}
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <h2 class="mb-4">Upload a New Track</h2>
-        <form id="upload-form" method="post" enctype="multipart/form-data">
-            {% csrf_token %}
+{% block main %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="mb-4">Upload a New Track</h2>
+            <form id="upload-form" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
 
-            <div id="form-fields">
-                {% for field in form %}
-                <div class="mb-3">
-                    <label for="{{ field.id_for_label }}" class="form-label">
-                        {{ field.label }}
-                        {% if field.field.required %}
-                            <span class="text-danger">*</span>
+                <div id="form-fields">
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">
+                            {{ field.label }}
+                            {% if field.field.required %}
+                                <span class="text-danger">*</span>
+                            {% endif %}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <small class="form-text text-muted">{{ field.help_text|safe }}</small>
                         {% endif %}
-                    </label>
-                    {{ field }}
-                    {% if field.help_text %}
-                        <small class="form-text text-muted">{{ field.help_text|safe }}</small>
-                    {% endif %}
-                    {% for error in field.errors %}
+                        {% for error in field.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <h5 class="mb-3 mt-5">Transcript (optional)</h5>
+                <div class="mb-3">
+                    <label class="form-label" for="{{ transcript_form.source_file.id_for_label }}">Upload Existing Transcript (SRT)</label>
+                    {{ transcript_form.source_file }}
+                    {% for error in transcript_form.source_file.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
                     {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="request-transcript-checkbox" name="request_transcript" {% if request_transcript_checked %}checked{% endif %}>
+                    <label class="form-check-label" for="request-transcript-checkbox">
+                        Request Auto-Transcription
+                    </label>
+                </div>
 
-            <h5 class="mb-3 mt-5">Transcript (optional)</h5>
-            <div class="mb-3">
-                <label class="form-label" for="{{ transcript_form.source_file.id_for_label }}">Upload Existing Transcript (SRT)</label>
-                {{ transcript_form.source_file }}
-                {% for error in transcript_form.source_file.errors %}
-                    <div class="invalid-feedback d-block">{{ error }}</div>
-                {% endfor %}
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="request-transcript-checkbox" name="request_transcript" {% if request_transcript_checked %}checked{% endif %}>
-                <label class="form-check-label" for="request-transcript-checkbox">
-                    Request Auto-Transcription
-                </label>
-            </div>
+                <!-- Error container for AJAX responses -->
+                <div id="error-container" class="alert alert-danger d-none" role="alert"></div>
 
-            <!-- Error container for AJAX responses -->
-            <div id="error-container" class="alert alert-danger d-none" role="alert"></div>
+                <!-- Progress bar -->
+                <div id="progress-container" class="progress mt-3 d-none">
+                    <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
 
-            <!-- Progress bar -->
-            <div id="progress-container" class="progress mt-3 d-none">
-                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-            </div>
-
-            <button type="submit" id="upload-button" class="btn btn-primary mt-3">Upload Track</button>
-        </form>
+                <button type="submit" id="upload-button" class="btn btn-primary mt-3">Upload Track</button>
+            </form>
+        </div>
     </div>
 </div>
 <script>
@@ -99,11 +101,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         xhr.addEventListener('loadstart', function() {
-            // Show progress bar and disable button
             progressContainer.classList.remove('d-none');
             uploadButton.disabled = true;
             uploadButton.textContent = 'Uploading...';
-            errorContainer.classList.add('d-none'); // Hide previous errors
+            errorContainer.classList.add('d-none');
         });
 
         xhr.addEventListener('load', function () {
@@ -113,7 +114,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (response.status === 'success') {
                         progressBar.classList.add('bg-success');
                         progressBar.textContent = 'Upload Complete!';
-                        window.location.href = response.redirect_url;
+                        window.parent.postMessage({
+                            action: 'navigate',
+                            url: response.redirect_url
+                        }, '{{ origin }}'.slice(0, -1));
                     } else {
                         handleErrorResponse(response.errors);
                     }
@@ -130,12 +134,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         xhr.addEventListener('loadend', function() {
-            // Re-enable button unless successful
-            const response = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            let response = {};
+            try {
+                if(xhr.responseText) response = JSON.parse(xhr.responseText);
+            } catch(e) {
+                console.error("Could not parse JSON response:", xhr.responseText);
+            }
+
             if (response.status !== 'success') {
                 uploadButton.disabled = false;
                 uploadButton.textContent = 'Upload Track';
-                progressContainer.classList.add('d-none'); // Hide progress bar on error
+                progressContainer.classList.add('d-none');
             }
         });
 
@@ -147,8 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof errors === 'object' && errors !== null) {
             for (const field in errors) {
                 if (errors.hasOwnProperty(field)) {
-                    // '__all__' is Django's key for non-field errors
-                    const prefix = field === '__all__' ? '' : `${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: `;
+                    const prefix = field === '__all__' ? '' : `<strong>${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> `;
                     errorHtml += `<p>${prefix}${errors[field][0].message || errors[field][0]}</p>`;
                 }
             }

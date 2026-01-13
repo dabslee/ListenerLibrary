@@ -1,0 +1,158 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ListenerLibrary</title>
+    <link rel="icon" href="{% static 'images/logo.png' %}" type="image/svg+xml">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'css/themes.css' %}" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            overflow: hidden; /* Prevent scrolling on the shell page */
+        }
+        #main-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #content-frame {
+            flex-grow: 1;
+            border: none;
+            height: calc(100% - 90px); /* Adjust based on player frame height */
+        }
+        #player-frame {
+            height: 90px;
+            border: none;
+            width: 100%;
+            flex-shrink: 0;
+            transition: height 0.3s ease-in-out;
+        }
+        /* Focus mode styles */
+        body.focus-mode #content-frame {
+            display: none;
+        }
+        body.focus-mode #player-frame {
+            height: 100%;
+        }
+        body.focus-mode nav {
+            display: none;
+        }
+        body.focus-mode #main-container {
+            height: 100vh;
+        }
+    </style>
+</head>
+<body data-bs-theme="dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'track_list' %}" target="content-frame">
+                <img src="{% static 'images/logo.png' %}" alt="ListenerLibrary Logo" width="30" height="30" class="d-inline-block align-top">
+                ListenerLibrary
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="focus-player-link">Player</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'track_list' %}" target="content-frame">Tracks</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'playlist_list' %}" target="content-frame">Playlists</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}" target="content-frame">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'register' %}" target="content-frame">Register</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="main-container">
+        <iframe name="content-frame" id="content-frame" src="{% url 'track_list' %}"></iframe>
+        <iframe name="player-frame" id="player-frame" src="{% url 'player_frame' %}"></iframe>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const contentFrame = document.getElementById('content-frame');
+        const playerFrame = document.getElementById('player-frame');
+        let playerStateCache = null;
+
+        // Message handler
+        const origin = '{{ origin }}';
+
+        window.addEventListener('message', function(event) {
+            // Security: ensure message is from the same origin
+            if (event.origin + '/' !== origin) {
+                console.warn("Discarding message from unknown origin:", event.origin);
+                return;
+            }
+
+            const data = event.data;
+            switch (data.action) {
+                case 'playTrack':
+                    playerFrame.contentWindow.postMessage(data, origin);
+                    break;
+                case 'playPlaylist':
+                    playerFrame.contentWindow.postMessage(data, origin);
+                    break;
+                case 'enterFocusMode':
+                    document.body.classList.add('focus-mode');
+                    break;
+                case 'exitFocusMode':
+                    document.body.classList.remove('focus-mode');
+                    break;
+                case 'navigate':
+                    contentFrame.src = data.url;
+                    break;
+                case 'requestPlayerState':
+                    if (playerStateCache) {
+                        contentFrame.contentWindow.postMessage({ action: 'updatePlayerState', state: playerStateCache }, origin);
+                    }
+                    break;
+                case 'playerControl':
+                    playerFrame.contentWindow.postMessage(data, origin);
+                    break;
+                case 'updatePlayerState':
+                    playerStateCache = data.state;
+                    contentFrame.contentWindow.postMessage({ action: 'updatePlayerState', state: playerStateCache }, origin);
+                    break;
+            }
+        });
+
+        // Focus player link
+        const focusPlayerLink = document.getElementById('focus-player-link');
+        if (focusPlayerLink) {
+            focusPlayerLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                contentFrame.src = "{% url 'play_focus' %}";
+            });
+        }
+    });
+    </script>
+</body>
+</html>

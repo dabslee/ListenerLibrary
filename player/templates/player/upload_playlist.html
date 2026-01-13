@@ -1,49 +1,49 @@
-{% extends "base.html" %}
+{% extends "content_base.html" %}
 
-{% block content %}
-    <div class="container mt-4">
-        <div class="card">
-            <div class="card-header">
-                <h2>Upload New Playlist</h2>
-            </div>
-            <div class="card-body">
-                <form id="upload-form" method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="id_name" class="form-label">Playlist Name</label>
-                        {{ form.name }}
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_image" class="form-label">Playlist Image</label>
-                        {{ form.image }}
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_tracks" class="form-label">Track Files</label>
-                        <input type="file" name="tracks" multiple class="form-control" required id="id_tracks">
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_default_track_icon" class="form-label">Default Track Icon (Optional)</label>
-                        {{ form.default_track_icon }}
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_default_track_type" class="form-label">Default Track Type</label>
-                        {{ form.default_track_type }}
-                    </div>
+{% block main %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>Upload New Playlist</h2>
+        </div>
+        <div class="card-body">
+            <form id="upload-form" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="id_name" class="form-label">Playlist Name</label>
+                    {{ form.name }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_image" class="form-label">Playlist Image</label>
+                    {{ form.image }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_tracks" class="form-label">Track Files</label>
+                    <input type="file" name="tracks" multiple class="form-control" required id="id_tracks">
+                </div>
+                <div class="mb-3">
+                    <label for="id_default_track_icon" class="form-label">Default Track Icon (Optional)</label>
+                    {{ form.default_track_icon }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_default_track_type" class="form-label">Default Track Type</label>
+                    {{ form.default_track_type }}
+                </div>
 
-                    <!-- Error container for AJAX responses -->
-                    <div id="error-container" class="alert alert-danger d-none" role="alert"></div>
+                <!-- Error container for AJAX responses -->
+                <div id="error-container" class="alert alert-danger d-none" role="alert"></div>
 
-                    <!-- Progress bar -->
-                    <div id="progress-container" class="progress mt-3 d-none">
-                        <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                    </div>
+                <!-- Progress bar -->
+                <div id="progress-container" class="progress mt-3 d-none">
+                    <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
 
-                    <button type="submit" id="upload-button" class="btn btn-primary mt-3">Upload Playlist</button>
-                    <a href="{% url 'playlist_list' %}" class="btn btn-secondary mt-3">Cancel</a>
-                </form>
-            </div>
+                <button type="submit" id="upload-button" class="btn btn-primary mt-3">Upload Playlist</button>
+                <a href="{% url 'playlist_list' %}" class="btn btn-secondary mt-3" target="content-frame">Cancel</a>
+            </form>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -88,7 +88,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (response.status === 'success') {
                         progressBar.classList.add('bg-success');
                         progressBar.textContent = 'Upload Complete!';
-                        window.location.href = response.redirect_url;
+                        // Instead of redirecting the iframe, tell the parent to navigate
+                        window.parent.postMessage({
+                            action: 'navigate',
+                            url: response.redirect_url
+                        }, '{{ origin }}'.slice(0, -1));
                     } else {
                         handleErrorResponse(response.errors);
                     }
@@ -105,7 +109,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         xhr.addEventListener('loadend', function() {
-            const response = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            // Check if responseText is valid JSON before parsing
+            let response = {};
+            try {
+                if (xhr.responseText) response = JSON.parse(xhr.responseText);
+            } catch (e) {
+                console.error("Could not parse response JSON:", xhr.responseText);
+            }
+
             if (response.status !== 'success') {
                 uploadButton.disabled = false;
                 uploadButton.textContent = 'Upload Playlist';
@@ -121,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof errors === 'object' && errors !== null) {
             for (const field in errors) {
                 if (errors.hasOwnProperty(field)) {
-                    const prefix = field === '__all__' ? '' : `${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: `;
+                    const prefix = field === '__all__' ? '' : `<strong>${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> `;
                     errorHtml += `<p>${prefix}${errors[field][0].message || errors[field][0]}</p>`;
                 }
             }

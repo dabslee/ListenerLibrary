@@ -113,12 +113,18 @@ def track_list(request):
         'storage_percentage': storage_percentage,
         'bookmarks': bookmarks,
         'bookmark_form': bookmark_form,
+        'origin': request.build_absolute_uri('/'),
     }
     return render(request, 'player/track_list.html', context)
 
 @login_required
 def play_focus(request):
-    return render(request, 'player/play_focus.html')
+    origin = request.build_absolute_uri('/')
+    return render(request, 'player/play_focus.html', {'origin': origin})
+
+def shell(request):
+    origin = request.build_absolute_uri('/')
+    return render(request, 'shell.html', {'origin': origin})
 
 @login_required
 def player_frame(request):
@@ -132,8 +138,10 @@ def player_frame(request):
     return render(request, 'player_frame.html', context)
 
 @login_required
-def profile(request):
-    return render(request, 'registration/profile.html')
+def shell(request):
+    origin = request.build_absolute_uri('/')
+    return render(request, 'shell.html', {'origin': origin})
+
 
 from .models import UserProfile
 from django.db.models import Sum
@@ -150,7 +158,7 @@ def register(request):
             user = form.save()
             # UserProfile is created automatically by the post_save signal
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            return redirect('track_list')
+            return redirect('shell')
     else:
         form = UserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
@@ -254,7 +262,8 @@ def upload_track(request):
     return render(request, 'player/upload_track.html', {
         'form': form,
         'transcript_form': transcript_form,
-        'request_transcript_checked': request_transcript_checked
+        'request_transcript_checked': request_transcript_checked,
+        'origin': request.build_absolute_uri('/')
     })
 
 @login_required
@@ -502,6 +511,7 @@ def playlist_detail(request, playlist_id):
     context = {
         'playlist': playlist,
         'playlist_items': playlist_items,
+        'origin': request.build_absolute_uri('/'),
     }
     return render(request, 'player/playlist_detail.html', context)
 
@@ -608,7 +618,10 @@ def upload_playlist(request):
     else:
         form = PlaylistUploadForm()
 
-    return render(request, 'player/upload_playlist.html', {'form': form})
+    return render(request, 'player/upload_playlist.html', {
+        'form': form,
+        'origin': request.build_absolute_uri('/')
+    })
 
 @login_required
 def delete_playlist(request, playlist_id):
