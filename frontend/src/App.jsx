@@ -13,15 +13,24 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import Bookmarks from './pages/Bookmarks';
 import Profile from './pages/Profile';
 import PlayFocus from './pages/PlayFocus';
+import TranscriptList from './pages/TranscriptList';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null); // null means checking
 
   useEffect(() => {
-    checkAuth();
+    if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      checkAuth();
+    } else {
+      setIsAuthenticated(false);
+    }
   }, []);
 
   const checkAuth = async () => {
+    if (window.location.pathname === '/login' || window.location.pathname === '/register') {
+      setIsAuthenticated(false);
+      return;
+    }
     try {
         const response = await api.get('/playback-state/');
         if (response.status === 200) {
@@ -46,13 +55,18 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/play-focus" element={isAuthenticated ? <PlayFocus /> : <Navigate to="/login" />} />
 
-            <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
-               <Route index element={<TrackList />} />
-               <Route path="playlists" element={<PlaylistList />} />
-               <Route path="playlists/:id" element={<PlaylistDetail />} />
-               <Route path="bookmarks" element={<Bookmarks />} />
-               <Route path="profile" element={<Profile />} />
-            </Route>
+            {isAuthenticated ? (
+                <Route path="/" element={<Layout />}>
+                    <Route index element={<TrackList />} />
+                    <Route path="playlists" element={<PlaylistList />} />
+                    <Route path="playlists/:id" element={<PlaylistDetail />} />
+                    <Route path="bookmarks" element={<Bookmarks />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="transcripts" element={<TranscriptList />} />
+                </Route>
+            ) : (
+                <Route path="*" element={<Navigate to="/login" />} />
+            )}
           </Routes>
         </Router>
     </ThemeProvider>

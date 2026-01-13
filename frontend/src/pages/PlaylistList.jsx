@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Row, Col, Badge } from 'react-bootstrap';
+import { Button, Modal } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaPlus, FaPlay, FaUpload } from 'react-icons/fa';
+import { FaPlus, FaUpload, FaMusic, FaPen, FaTrash } from 'react-icons/fa';
 import api from '../api';
 import PlaylistFormModal from '../components/PlaylistFormModal';
 import PlaylistUploadModal from '../components/PlaylistUploadModal';
@@ -11,6 +11,10 @@ function PlaylistList() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [editPlaylist, setEditPlaylist] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [playlistToDelete, setPlaylistToDelete] = useState(null);
+
 
   useEffect(() => {
     fetchPlaylists();
@@ -27,62 +31,82 @@ function PlaylistList() {
     }
   };
 
+  const openEditModal = (playlist) => {
+    setEditPlaylist(playlist);
+    setShowCreateModal(true);
+  };
+
+  const openDeleteModal = (playlist) => {
+    setPlaylistToDelete(playlist);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!playlistToDelete) return;
+    try {
+        await api.delete(`/playlists/${playlistToDelete.id}/`);
+        fetchPlaylists();
+        setShowDeleteModal(false);
+        setPlaylistToDelete(null);
+    } catch (e) {
+        console.error(e);
+        alert('Failed to delete playlist');
+    }
+  };
+
+
   return (
-    <div className="p-3">
+    <>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="mb-0">Playlists</h2>
-        <div className="d-flex gap-2">
-            <Button variant="outline-primary" className="d-flex align-items-center gap-2" onClick={() => setShowUploadModal(true)}>
-                <FaUpload /> Upload Playlist
+        <h2>Your Playlists</h2>
+        <div className="d-flex justify-content-end gap-2">
+            <Button variant="primary" onClick={() => setShowUploadModal(true)}>
+                <FaUpload className="me-1" />Upload Playlist
             </Button>
-            <Button variant="success" className="d-flex align-items-center gap-2" onClick={() => setShowCreateModal(true)}>
-                <FaPlus /> Create Playlist
+            <Button variant="primary" onClick={() => { setEditPlaylist(null); setShowCreateModal(true); }}>
+                <FaPlus className="me-1" />Create New Playlist
             </Button>
         </div>
       </div>
 
-      {loading ? <div>Loading...</div> : (
-          <Row xs={1} sm={2} md={3} lg={4} className="g-4">
-            {playlists.map(playlist => (
-              <Col key={playlist.id}>
-                <Card className="h-100 shadow-sm border-0 hover-shadow transition-all">
-                    <div className="position-relative">
-                        {playlist.image_url ? (
-                            <Card.Img variant="top" src={playlist.image_url} style={{height: '200px', objectFit: 'cover'}} />
-                        ) : (
-                            <div className="bg-light d-flex align-items-center justify-content-center text-muted" style={{height: '200px'}}>
-                                No Cover
-                            </div>
-                        )}
-                        <Button
-                            variant="primary"
-                            className="position-absolute bottom-0 end-0 m-3 rounded-circle d-flex align-items-center justify-content-center shadow"
-                            style={{width: 40, height: 40, zIndex: 2}}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                // Logic to play full playlist
-                            }}
-                        >
-                            <FaPlay style={{marginLeft: 2}} />
-                        </Button>
+      <div className="list-group">
+        {loading ? <p>Loading...</p> : playlists.map(playlist => (
+            <div key={playlist.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <Link to={`/playlists/${playlist.id}`} className="text-decoration-none d-flex align-items-center flex-grow-1 me-3">
+                    {playlist.image_url ? (
+                        <img src={playlist.image_url} alt={playlist.name} style={{width: 50, height: 50, borderRadius: 5, objectFit: 'cover'}} className="me-3" />
+                    ) : (
+                        <div className="bg-secondary me-3 d-flex align-items-center justify-content-center" style={{width: 50, height: 50, borderRadius: 5}}>
+                            <FaMusic className="text-white" />
+                        </div>
+                    )}
+                    <div>
+                        <h5 className="mb-1">{playlist.name}</h5>
                     </div>
-                  <Card.Body>
-                    <Card.Title className="text-truncate">{playlist.name}</Card.Title>
-                    <Card.Text className="text-muted small">
-                        {playlist.tracks ? playlist.tracks.length : 0} tracks
-                    </Card.Text>
-                    <Link to={`/playlists/${playlist.id}`} className="stretched-link"></Link>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-      )}
+                </Link>
+
+                <div className="d-flex">
+                    <Button variant="outline-primary" size="sm" className="me-2" onClick={() => openEditModal(playlist)}>
+                        <FaPen />
+                    </Button>
+                    <Button variant="outline-danger" size="sm" onClick={() => openDeleteModal(playlist)}>
+                        <FaTrash />
+                    </Button>
+                </div>
+            </div>
+        ))}
+        {!loading && playlists.length === 0 && (
+            <div className="alert alert-info mt-4">
+                You haven't created any playlists yet. <a href="#" onClick={(e) => {e.preventDefault(); setShowCreateModal(true);}}>Create your first playlist!</a>
+            </div>
+        )}
+      </div>
 
       <PlaylistFormModal
         show={showCreateModal}
-        onHide={() => setShowCreateModal(false)}
-        onSuccess={() => { setShowCreateModal(false); fetchPlaylists(); }}
+        playlist={editPlaylist}
+        onHide={() => { setShowCreateModal(false); setEditPlaylist(null); }}
+        onSuccess={() => { setShowCreateModal(false); setEditPlaylist(null); fetchPlaylists(); }}
       />
 
       <PlaylistUploadModal
@@ -90,7 +114,20 @@ function PlaylistList() {
         onHide={() => setShowUploadModal(false)}
         onSuccess={() => { setShowUploadModal(false); fetchPlaylists(); }}
       />
-    </div>
+
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+        <Modal.Header closeButton>
+            <Modal.Title>Confirm Deletion</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+            Are you sure you want to delete the playlist "<strong>{playlistToDelete?.name}</strong>"? This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+            <Button variant="danger" onClick={confirmDelete}>Delete</Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 }
 
