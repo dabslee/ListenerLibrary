@@ -74,7 +74,7 @@
                                 {{ user.username }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
                             </ul>
                         </li>
                     {% else %}
@@ -86,6 +86,9 @@
                         </li>
                     {% endif %}
                 </ul>
+                <form id="logout-form" action="{% url 'logout' %}" method="post" style="display: none;" target="_top">
+                    {% csrf_token %}
+                </form>
             </div>
         </div>
     </nav>
