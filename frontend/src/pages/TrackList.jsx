@@ -269,7 +269,7 @@ function TrackList() {
                                 <Dropdown.Item key={p.id} onClick={() => toggleTrackInPlaylist(track.id, p.id)}>
                                     <div className="d-flex justify-content-between align-items-center">
                                         {p.name}
-                                        {track.playlists.includes(p.id) && <FaCheck className="text-success ms-2" />}
+                                        {(track.playlists || []).includes(p.id) && <FaCheck className="text-success ms-2" />}
                                     </div>
                                 </Dropdown.Item>
                             ))}
