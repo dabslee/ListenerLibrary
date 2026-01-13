@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, ButtonGroup } from 'react-bootstrap';
+import { Table, Button, ButtonGroup, Form } from 'react-bootstrap';
 import { FaPlay, FaTrash } from 'react-icons/fa';
 import api from '../api';
 
 function Bookmarks() {
     const [bookmarks, setBookmarks] = useState([]);
+    const [newBookmarkName, setNewBookmarkName] = useState('');
 
     useEffect(() => {
         fetchBookmarks();
@@ -17,6 +18,15 @@ function Bookmarks() {
         } catch (e) {
             console.error(e);
         }
+    };
+
+    const handleCreateBookmark = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/bookmarks/', { name: newBookmarkName });
+            setNewBookmarkName('');
+            fetchBookmarks();
+        } catch (error) { console.error('Failed to create bookmark', error); }
     };
 
     const handlePlay = async (id) => {
@@ -43,6 +53,16 @@ function Bookmarks() {
     return (
         <div>
             <h2>Bookmarks</h2>
+            <Form onSubmit={handleCreateBookmark} className="mb-3">
+                <div className="input-group">
+                    <Form.Control
+                        placeholder="Add new bookmark at current position..."
+                        value={newBookmarkName}
+                        onChange={(e) => setNewBookmarkName(e.target.value)}
+                    />
+                    <Button variant="primary" type="submit">Save</Button>
+                </div>
+            </Form>
             <Table hover>
                 <thead>
                     <tr>

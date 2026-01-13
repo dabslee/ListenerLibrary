@@ -19,10 +19,11 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null); // null means checking
 
   useEffect(() => {
-    if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-      checkAuth();
-    } else {
+    const path = window.location.pathname;
+    if (path === '/login' || path === '/register') {
       setIsAuthenticated(false);
+    } else {
+      checkAuth();
     }
   }, []);
 

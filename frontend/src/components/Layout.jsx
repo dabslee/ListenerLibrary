@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { Container, Navbar, Nav, NavDropdown, Modal, Form, Button } from 'react-bootstrap';
-import { FaSignOutAlt, FaPlay, FaTrash } from 'react-icons/fa';
+import { FaSignOutAlt } from 'react-icons/fa';
 import Player from './Player';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../api';
@@ -13,9 +13,6 @@ function Layout() {
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState('');
   const [sleepTimer, setSleepTimer] = useState(null);
   const [sleepTimerRemaining, setSleepTimerRemaining] = useState(0);
-  const [showBookmarksModal, setShowBookmarksModal] = useState(false);
-  const [bookmarks, setBookmarks] = useState([]);
-  const [newBookmarkName, setNewBookmarkName] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -26,47 +23,6 @@ function Layout() {
     };
     fetchUser();
   }, []);
-
-  useEffect(() => {
-    if (showBookmarksModal) {
-        fetchBookmarks();
-    }
-  }, [showBookmarksModal]);
-
-  const fetchBookmarks = async () => {
-    try {
-        const response = await api.get('/bookmarks/');
-        setBookmarks(response.data.results || response.data);
-    } catch (error) { console.error('Failed to fetch bookmarks', error); }
-  };
-
-  const handleCreateBookmark = async (e) => {
-    e.preventDefault();
-    try {
-        await api.post('/bookmarks/', { name: newBookmarkName });
-        setNewBookmarkName('');
-        fetchBookmarks();
-    } catch (error) { console.error('Failed to create bookmark', error); }
-  };
-
-  const handlePlayBookmark = async (bookmarkId) => {
-    try {
-        const response = await api.post(`/bookmarks/${bookmarkId}/play/`);
-        if (window.loadPlaybackState && response.data.playback_state) {
-            window.loadPlaybackState(response.data.playback_state);
-        }
-        setShowBookmarksModal(false);
-    } catch (error) { console.error('Failed to play bookmark', error); }
-  };
-
-  const handleDeleteBookmark = async (bookmarkId) => {
-    if (window.confirm('Are you sure you want to delete this bookmark?')) {
-        try {
-            await api.delete(`/bookmarks/${bookmarkId}/`);
-            fetchBookmarks();
-        } catch (error) { console.error('Failed to delete bookmark', error); }
-    }
-  };
 
   const handleLogout = () => {
       window.location.href = '/accounts/logout/';
@@ -142,6 +98,7 @@ function Layout() {
               <Nav.Link as={Link} to="/play-focus">Player</Nav.Link>
               <Nav.Link as={Link} to="/">Tracks</Nav.Link>
               <Nav.Link as={Link} to="/playlists">Playlists</Nav.Link>
+              <Nav.Link as={Link} to="/bookmarks">Bookmarks</Nav.Link>
             </Nav>
             <Nav>
                 <NavDropdown title={username || 'User'} id="user-nav-dropdown" align="end">
@@ -156,7 +113,6 @@ function Layout() {
                     </div>
                     <NavDropdown.Divider />
                     <NavDropdown.Item onClick={() => setShowSleepTimerModal(true)}>Sleep Timer</NavDropdown.Item>
-                    <NavDropdown.Item onClick={() => setShowBookmarksModal(true)}>Bookmarks</NavDropdown.Item>
                     <NavDropdown.Item as={Link} to="/transcripts">Transcription</NavDropdown.Item>
                     <NavDropdown.Divider />
                     <NavDropdown.Item as={Link} to="/profile">Profile</NavDropdown.Item>
@@ -205,35 +161,6 @@ function Layout() {
         </Modal.Body>
       </Modal>
 
-      <Modal show={showBookmarksModal} onHide={() => setShowBookmarksModal(false)} centered>
-          <Modal.Header closeButton><Modal.Title>Bookmarks</Modal.Title></Modal.Header>
-          <Modal.Body>
-            <Form onSubmit={handleCreateBookmark}>
-                <div className="input-group mb-3">
-                    <Form.Control
-                        placeholder="Add new bookmark at current position..."
-                        value={newBookmarkName}
-                        onChange={(e) => setNewBookmarkName(e.target.value)}
-                    />
-                    <Button variant="primary" type="submit">Save</Button>
-                </div>
-            </Form>
-            <div className="list-group" style={{maxHeight: 300, overflowY: 'auto'}}>
-                {bookmarks.length > 0 ? bookmarks.map(b => (
-                    <div key={b.id} className="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 className="mb-1">{b.name}</h6>
-                            <small className="text-muted">"{b.track_name}" at {formatDuration(b.position)}</small>
-                        </div>
-                        <div>
-                            <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handlePlayBookmark(b.id)}><FaPlay /></Button>
-                            <Button variant="outline-danger" size="sm" onClick={() => handleDeleteBookmark(b.id)}><FaTrash /></Button>
-                        </div>
-                    </div>
-                )) : <p className="text-muted">No bookmarks saved yet.</p>}
-            </div>
-          </Modal.Body>
-      </Modal>
     </div>
   );
 }

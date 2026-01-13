@@ -62,15 +62,21 @@ function Player() {
       const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
       const handleLoadedMetadata = () => setDuration(audio.duration);
       const handleEnded = () => playNext();
+      const handleError = () => {
+        alert("Error loading track. The file may be missing or corrupt.");
+        setIsPlaying(false);
+      };
 
       audio.addEventListener('timeupdate', handleTimeUpdate);
       audio.addEventListener('loadedmetadata', handleLoadedMetadata);
       audio.addEventListener('ended', handleEnded);
+      audio.addEventListener('error', handleError);
 
       return () => {
           audio.removeEventListener('timeupdate', handleTimeUpdate);
           audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
           audio.removeEventListener('ended', handleEnded);
+          audio.removeEventListener('error', handleError);
       };
   }, [currentTrack, playbackSpeed, playlist, isShuffle]);
 

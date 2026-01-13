@@ -38,10 +38,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
+    storage_usage_bytes = serializers.SerializerMethodField()
+    storage_limit_bytes = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
-        fields = ['storage_limit_gb', 'username']
+        fields = ['storage_limit_gb', 'username', 'storage_usage_bytes', 'storage_limit_bytes']
+
+    def get_storage_usage_bytes(self, obj):
+        return Track.objects.filter(owner=obj.user).aggregate(Sum('file_size'))['file_size__sum'] or 0
+
+    def get_storage_limit_bytes(self, obj):
+        return obj.storage_limit_gb * 1024 * 1024 * 1024
 
 class TranscriptSerializer(serializers.ModelSerializer):
     class Meta:
