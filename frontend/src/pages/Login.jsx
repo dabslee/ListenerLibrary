@@ -43,6 +43,7 @@ function Login({ setIsAuthenticated }) {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter username"
             required
           />
         </Form.Group>
@@ -52,6 +53,7 @@ function Login({ setIsAuthenticated }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter password"
             required
           />
         </Form.Group>
