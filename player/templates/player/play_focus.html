@@ -1,8 +1,6 @@
-{% extends "raw_base.html" %}
+{% extends "content_base.html" %}
 
-{% block bodymods %}class="min-vh-100 d-flex flex-column"{% endblock %}
-
-{% block content %}
+{% block main %}
 <div class="d-flex flex-column flex-grow-1 justify-content-center align-items-center text-center w-100 p-4"
      style="max-width: 100%; margin: 0 auto;">
 
@@ -115,9 +113,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Audio player is needed here because this template extends raw_base.html directly -->
-    <audio id="audio-player" class="d-none"></audio>
 </div>
 
 <style>
@@ -149,84 +144,98 @@
 </style>
 {% endblock %}
 
-{% block player_footer %}{% endblock %}
-
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // #region Element Selectors
     const artImg = document.getElementById('player-icon');
-    const placeholder = document.getElementById('player-art-placeholder');
-    const mainEl = document.querySelector('main.container');
-    const navbar = document.querySelector('nav.navbar');
+    const artPlaceholder = document.getElementById('player-art-placeholder');
+    const playlistInfoEl = document.getElementById('player-playlist-info');
+    const playlistNameEl = document.getElementById('player-playlist-name');
+    const trackNameEl = document.getElementById('player-track-name');
+    const trackArtistEl = document.getElementById('player-track-artist');
+    const currentTimeEl = document.getElementById('current-time');
+    const seekBar = document.getElementById('seek-bar');
+    const durationEl = document.getElementById('duration');
+    const prevTrackBtn = document.getElementById('prev-track-btn');
+    const skipBackBtn = document.getElementById('skip-back-btn');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const skipForwardBtn = document.getElementById('skip-forward-btn');
+    const nextTrackBtn = document.getElementById('next-track-btn');
+    const shuffleBtn = document.getElementById('shuffle-btn');
+    const playbackSpeedSelect = document.getElementById('playback-speed');
+    // #endregion
 
-    function syncPlaceholder() {
-        if (!artImg || !placeholder) {
-            return;
-        }
-        const shouldShowPlaceholder = !artImg.src || artImg.style.display === 'none';
-        placeholder.classList.toggle('d-none', !shouldShowPlaceholder);
-    }
-
-    if (artImg) {
-        artImg.addEventListener('load', function () {
-            artImg.style.display = 'block';
-            syncPlaceholder();
-        });
-
-        artImg.addEventListener('error', function () {
-            artImg.style.display = 'none';
-            syncPlaceholder();
-        });
-
-        const observer = new MutationObserver(syncPlaceholder);
-        observer.observe(artImg, { attributes: true, attributeFilter: ['style', 'src'] });
-    }
-
-    syncPlaceholder();
-
-    if (mainEl) {
-        mainEl.classList.remove('mt-4', 'mb-5', 'pb-5');
-        mainEl.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'justify-content-center');
-        mainEl.style.paddingBottom = '0';
-        mainEl.style.marginBottom = '0';
-        mainEl.style.marginTop = '0';
-        const navHeight = navbar ? navbar.offsetHeight : 0;
-        mainEl.style.minHeight = `calc(100vh - ${navHeight}px)`;
-        mainEl.style.width = '100%';
-    }
-
-    // Transcript Logic
+    // #region Transcript Element Selectors
     const transcriptContainer = document.getElementById('transcript-container');
     const transcriptContent = document.getElementById('transcript-content');
     const searchInput = document.getElementById('transcript-search');
     const autoScrollBtn = document.getElementById('transcript-auto-scroll-btn');
     const scrollToCurrentBtn = document.getElementById('scroll-to-current-btn');
-    const audioPlayer = document.getElementById('audio-player');
+    // #endregion
 
     let transcriptData = [];
     let autoScroll = true;
     let currentTrackId = null;
+    const origin = '{{ origin }}'.slice(0, -1);
 
-    // Hook into global player load (assuming custom event or observing DOM)
-    // Since player.js updates the UI but doesn't emit a clean event, we might need to modify player.js
-    // OR we can poll for changes in track ID.
-    // Ideally, player.js should trigger an event.
-    // For now, let's look at `player-track-name` or specific hidden input if available.
-    // But better: use the `audioPlayer` 'loadedmetadata' or 'play' event to check if track changed.
-
-    // We need to know the Track ID. The current play_focus template logic relies on player.js populating fields.
-    // We can intercept `loadAndPlayTrack` if we can access it, or just monitor `audioPlayer.src`.
-    // Actually, `player.js` is global. Let's see if we can hook into it.
-
-    // Hack: Overwrite `loadAndPlayTrack` or Listen for `user-playback-state` updates.
-    // The cleanest way without modifying player.js heavily is to listen to `audio` events and fetch transcript if ID changed.
-    // But `audio.src` is a stream URL like `/track/1/stream/`. We can extract ID.
-
-    function getTrackIdFromSrc(src) {
-        const match = src.match(/\/track\/(\d+)\/stream\//);
-        return match ? match[1] : null;
+    function postToParent(message) {
+        window.parent.postMessage(message, origin);
     }
 
+    function formatTime(seconds) {
+        if (isNaN(seconds) || seconds < 0) return "0:00";
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateUI(state) {
+        if (!state) return;
+
+        trackNameEl.textContent = state.trackName || 'No track selected';
+        trackArtistEl.textContent = state.trackArtist || 'No artist';
+
+        if (state.trackArtUrl) {
+            artImg.src = state.trackArtUrl;
+        } else {
+            artImg.src = '';
+            artImg.classList.add('d-none');
+            artPlaceholder.classList.remove('d-none');
+        }
+
+        if (state.playlistName) {
+            playlistNameEl.textContent = state.playlistName;
+            playlistInfoEl.style.display = 'block';
+        } else {
+            playlistInfoEl.style.display = 'none';
+        }
+
+        const playIcon = playPauseBtn.querySelector('i');
+        if (state.isPlaying) {
+            playIcon.classList.remove('fa-play');
+            playIcon.classList.add('fa-pause');
+        } else {
+            playIcon.classList.remove('fa-pause');
+            playIcon.classList.add('fa-play');
+        }
+
+        currentTimeEl.textContent = formatTime(state.currentTime);
+        durationEl.textContent = formatTime(state.duration);
+        seekBar.max = state.duration || 100;
+        seekBar.value = state.currentTime || 0;
+
+        playbackSpeedSelect.value = state.playbackSpeed || '1';
+
+        shuffleBtn.classList.toggle('active', !!state.isShuffled);
+
+        if (state.trackId && state.trackId !== currentTrackId) {
+            loadTranscript(state.trackId);
+        }
+        updateTranscriptHighlight(state.currentTime);
+    }
+
+    // #region Transcript Logic
     async function loadTranscript(trackId) {
         if (!trackId) return;
         currentTrackId = trackId;
@@ -235,6 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const response = await fetch(`/api/track/${trackId}/transcript/`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
 
             if (data.status === 'success') {
@@ -244,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 transcriptData = [];
                 transcriptContent.innerHTML = '';
-                transcriptContainer.classList.add('d-none'); // Hide if unavailable
+                transcriptContainer.classList.add('d-none');
             }
         } catch (e) {
             console.error("Failed to load transcript", e);
@@ -262,29 +272,18 @@ document.addEventListener('DOMContentLoaded', function () {
             div.dataset.index = index;
             div.textContent = line.text;
             div.onclick = () => {
-                audioPlayer.currentTime = line.start;
-                audioPlayer.play();
+                postToParent({ action: 'playerControl', control: 'seekTo', value: line.start });
                 setAutoScroll(true);
             };
             transcriptContent.appendChild(div);
         });
     }
 
-    function updateTranscriptHighlight() {
-        if (!transcriptData.length) return;
-        const currentTime = audioPlayer.currentTime;
+    function updateTranscriptHighlight(currentTime) {
+        if (!transcriptData.length || currentTime === undefined) return;
 
-        // Find active line
-        // Optimization: could store last index, but N is small usually.
         let activeIndex = -1;
         for (let i = 0; i < transcriptData.length; i++) {
-            if (currentTime >= transcriptData[i].start && currentTime <= transcriptData[i].end) {
-                activeIndex = i;
-                break;
-            }
-            // Fallback for gaps: if between lines, highlight the upcoming or previous?
-            // Usually highlight the one we just passed if within a small window, or nothing.
-            // Let's stick to strict overlap or "most recent started"
             if (currentTime >= transcriptData[i].start) {
                 activeIndex = i;
             }
@@ -293,34 +292,26 @@ document.addEventListener('DOMContentLoaded', function () {
         const lines = transcriptContent.children;
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            if (i === activeIndex) {
-                line.classList.add('active');
-                line.classList.remove('past');
-                if (autoScroll) {
-                    scrollToLine(line);
-                }
-            } else if (i < activeIndex) {
-                line.classList.add('past');
-                line.classList.remove('active');
-            } else {
-                line.classList.remove('active', 'past');
+            const isActive = i === activeIndex;
+            const isPast = i < activeIndex;
+            line.classList.toggle('active', isActive);
+            line.classList.toggle('past', isPast);
+            if (isActive && autoScroll) {
+                scrollToLine(line);
             }
         }
     }
 
     function scrollToLine(element) {
-        const containerHeight = transcriptContent.clientHeight;
-        const scrollTop = transcriptContent.scrollTop;
-        const elementTop = element.offsetTop - transcriptContent.offsetTop;
-        const elementHeight = element.clientHeight;
-
-        // Center the element
-        const targetScroll = elementTop - (containerHeight / 2) + (elementHeight / 2);
-
-        transcriptContent.scrollTo({
-            top: targetScroll,
-            behavior: 'smooth'
-        });
+        const containerRect = transcriptContent.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const isVisible = (
+            elementRect.top >= containerRect.top &&
+            elementRect.bottom <= containerRect.bottom
+        );
+        if (!isVisible) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     function setAutoScroll(enabled) {
@@ -330,109 +321,71 @@ document.addEventListener('DOMContentLoaded', function () {
         scrollToCurrentBtn.style.display = enabled ? 'none' : 'block';
     }
 
-    // Event Listeners
-    audioPlayer.addEventListener('timeupdate', updateTranscriptHighlight);
-
-    // Detect track change
-    audioPlayer.addEventListener('loadedmetadata', () => {
-        const newTrackId = getTrackIdFromSrc(audioPlayer.src);
-        if (newTrackId && newTrackId !== currentTrackId) {
-            loadTranscript(newTrackId);
-        }
-    });
-
-    // Also check on load incase audio source is already set
-    const initialTrackId = getTrackIdFromSrc(audioPlayer.src);
-    if (initialTrackId) {
-        loadTranscript(initialTrackId);
-    }
-
-    // Scroll Logic
-    transcriptContent.addEventListener('scroll', () => {
-        // Simple heuristic: if user scrolls, disable auto-scroll
-        // But we need to distinguish between script-initiated scroll and user scroll.
-        // It's hard to distinguish perfectly.
-        // Let's rely on the button and click interactions for now.
-        // Or simpler: If user scrolls away from active element significantly?
-        // Let's leave it to manual toggle for robustness as requested ("user should be able to scroll away... include a button that will scroll you back").
-    });
-
-    // User manual interaction disables autoscroll (optional, but good UX)
-    transcriptContent.addEventListener('mousedown', () => {
-        // setAutoScroll(false); // Can be annoying if accidental. Let's stick to the button.
-    });
-
-    autoScrollBtn.addEventListener('click', () => {
-        setAutoScroll(!autoScroll);
-    });
-
-    scrollToCurrentBtn.addEventListener('click', () => {
-        setAutoScroll(true);
-        // Force immediate update
-        updateTranscriptHighlight();
-    });
-
-    // Helper to escape HTML characters
     function escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+      return text.replace(/[&<>"']/g, (match) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[match]));
     }
 
-    // Search
     searchInput.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
         const lines = transcriptContent.children;
         let firstMatch = null;
-
         for (let line of lines) {
-            const rawText = line.textContent;
-            const lowerText = rawText.toLowerCase();
-
-            if (term && lowerText.includes(term)) {
-                // Escape the full text first, then highlight the matches (which are safe strings)
-                // We use a safe replacement strategy:
-                // 1. Escape the original text.
-                // 2. Find the escaped term in the escaped text? No, that's complex because '&' changes positions.
-                // Simpler: Split by the term (case insensitive), then join with the highlight span.
-                // But we need to preserve the original casing of the text.
-
-                // Regex to find matches (case insensitive)
+            const rawText = transcriptData[line.dataset.index].text;
+            if (term && rawText.toLowerCase().includes(term)) {
                 const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-
-                // We map over parts. If part matches term (case insensitive), we wrap in span.
-                // BUT we must escape the *content* of the parts first.
-                // Actually, split logic:
-                const parts = rawText.split(regex);
-                const safeHtml = parts.map(part => {
-                    if (part.toLowerCase() === term) {
-                        return `<span class="highlight-match">${escapeHtml(part)}</span>`;
-                    } else {
-                        return escapeHtml(part);
-                    }
-                }).join('');
-
-                line.innerHTML = safeHtml;
+                line.innerHTML = escapeHtml(rawText).replace(regex, '<span class="highlight-match">$1</span>');
                 line.classList.remove('d-none');
                 if (!firstMatch) firstMatch = line;
-            } else if (term) {
-                line.textContent = rawText; // Reset to plain text (safest)
-                line.classList.add('d-none');
             } else {
-                 line.textContent = rawText; // Reset
-                 line.classList.remove('d-none');
+                line.innerHTML = escapeHtml(rawText);
+                line.classList.toggle('d-none', !!term);
             }
         }
-
         if (firstMatch) {
             setAutoScroll(false);
             scrollToLine(firstMatch);
         }
+    });
+
+    autoScrollBtn.addEventListener('click', () => setAutoScroll(!autoScroll));
+    scrollToCurrentBtn.addEventListener('click', () => {
+        setAutoScroll(true);
+        postToParent({ action: 'requestPlayerState' }); // to get current time and force scroll
+    });
+    // #endregion
+
+    // #region Event Listeners for Player Controls
+    playPauseBtn.addEventListener('click', () => postToParent({ action: 'playerControl', control: 'playPause' }));
+    prevTrackBtn.addEventListener('click', () => postToParent({ action: 'playerControl', control: 'prevTrack' }));
+    nextTrackBtn.addEventListener('click', () => postToParent({ action: 'playerControl', control: 'nextTrack' }));
+    skipBackBtn.addEventListener('click', () => postToParent({ action: 'playerControl', control: 'skip', value: -15 }));
+    skipForwardBtn.addEventListener('click', () => postToParent({ action: 'playerControl', control: 'skip', value: 15 }));
+    shuffleBtn.addEventListener('click', () => postToParent({ action: 'playerControl', control: 'toggleShuffle' }));
+    playbackSpeedSelect.addEventListener('change', (e) => postToParent({ action: 'playerControl', control: 'setSpeed', value: e.target.value }));
+    seekBar.addEventListener('input', (e) => postToParent({ action: 'playerControl', control: 'seek', value: e.target.value }));
+    // #endregion
+
+    // Listen for messages from parent (e.g., player state updates)
+    window.addEventListener('message', function(event) {
+        if (event.origin !== origin) {
+            console.warn("Discarding message from unknown origin:", event.origin);
+            return;
+        }
+        const data = event.data;
+        if (data.action === 'updatePlayerState') {
+            updateUI(data.state);
+        }
+    });
+
+    // Initial setup
+    postToParent({ action: 'enterFocusMode' });
+    postToParent({ action: 'requestPlayerState' });
+
+    // Inform parent on unload to exit focus mode
+    window.addEventListener('beforeunload', function() {
+        postToParent({ action: 'exitFocusMode' });
     });
 });
 </script>

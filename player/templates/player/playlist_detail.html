@@ -1,12 +1,13 @@
-{% extends "base.html" %}
+{% extends "content_base.html" %}
 {% load player_extras %}
 
-{% block content %}
+{% block main %}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>{{ playlist.name }}</h2>
         <div class="d-flex flex-wrap justify-content-end gap-1">
-            <button id="play-all-btn" class="btn btn-success"><i class="fas fa-play me-2"></i>Play All</button>
-            <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary"><i class="fas fa-pen me-2"></i>Edit Playlist Details</a>
+            <button id="play-all-btn" class="btn btn-success"><i class="fas fa-play me-2"></i>Play</button>
+            <button id="shuffle-play-btn" class="btn btn-success"><i class="fas fa-random me-2"></i>Shuffle Play</button>
+            <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary" target="content-frame"><i class="fas fa-pen me-2"></i>Edit Playlist</a>
         </div>
     </div>
 
@@ -28,7 +29,7 @@
                         data-track-id="{{ item.track.id }}"
                         id="playlist-item-{{ item.track.id }}"
                         data-testid="track-item-{{ item.track.id }}">
-                        <div class="flex-grow-1 d-flex align-items-center" style="cursor: pointer;" onclick="window.playPlaylist({{ playlist.id }}, '{{ playlist.name|escapejs }}', playlistData, {{ forloop.counter0 }})">
+                        <div class="flex-grow-1 d-flex align-items-center" style="cursor: pointer;" onclick="playTrack({{ forloop.counter0 }})">
                             <i class="fas fa-grip-vertical me-3" style="cursor: move;"></i>
                             {% if item.track.icon %}
                                 <img src="{{ item.track.icon.url }}" alt="{{ item.track.name }}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;" class="me-3">
@@ -133,17 +134,35 @@ let playlistData = [
     {% endfor %}
 ];
 
+function playTrack(index) {
+    playPlaylist({{ playlist.id }}, '{{ playlist.name|escapejs }}', playlistData, index, false);
+}
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    function playPlaylist(playlistId, playlistName, tracks, startIndex, shuffle) {
+        if (!tracks || tracks.length === 0) {
+            showToast("This playlist is empty!", "warning");
+            return;
+        }
+        window.parent.postMessage({
+            action: 'playPlaylist',
+            playlistId: playlistId,
+            playlistName: playlistName,
+            tracks: tracks,
+            startIndex: startIndex,
+            shuffle: shuffle
+        }, '{{ origin }}'.slice(0, -1));
+    }
+
+    window.playPlaylist = playPlaylist; // Make it accessible to inline onclick
+
     function initTooltips() {
         const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         tooltipElements.forEach(el => {
             const existing = bootstrap.Tooltip.getInstance(el);
-            if (existing) {
-                existing.dispose();
-            }
+            if (existing) existing.dispose();
             new bootstrap.Tooltip(el);
         });
     }
@@ -159,8 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
             playlistIdToRemove = button.dataset.playlistId;
             trackIdToRemove = button.dataset.trackId;
             const trackName = button.dataset.trackName;
-            const trackNameElement = document.getElementById('track-name-to-remove');
-            trackNameElement.textContent = trackName;
+            document.getElementById('track-name-to-remove').textContent = trackName;
         });
     }
 
@@ -168,28 +186,21 @@ document.addEventListener('DOMContentLoaded', function () {
     if (confirmRemoveBtn) {
         confirmRemoveBtn.addEventListener('click', function () {
             if (!playlistIdToRemove || !trackIdToRemove) return;
-
             const url = `/playlists/remove_track/${playlistIdToRemove}/${trackIdToRemove}/`;
-            const csrfToken = '{{ csrf_token }}';
-
             fetch(url, {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': csrfToken,
+                    'X-CSRFToken': '{{ csrf_token }}',
                     'Content-Type': 'application/json'
                 }
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    const itemToRemove = document.getElementById(`playlist-item-${trackIdToRemove}`);
-                    if (itemToRemove) {
-                        itemToRemove.remove();
-                    }
+                    document.getElementById(`playlist-item-${trackIdToRemove}`)?.remove();
                     playlistData = playlistData.filter(track => track.id !== parseInt(trackIdToRemove));
                     showToast(data.message, 'success');
-                    const modalInstance = bootstrap.Modal.getInstance(removeTrackModal);
-                    modalInstance.hide();
+                    bootstrap.Modal.getInstance(removeTrackModal).hide();
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -200,17 +211,16 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
-    const playAllBtn = document.getElementById('play-all-btn');
-    if (playAllBtn) {
-        playAllBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (playlistData.length > 0) {
-                window.playPlaylist({{ playlist.id }}, "{{ playlist.name|escapejs }}", playlistData, 0);
-            } else {
-                showToast("This playlist is empty!", "warning");
-            }
-        });
-    }
+
+    document.getElementById('play-all-btn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        playPlaylist({{ playlist.id }}, "{{ playlist.name|escapejs }}", playlistData, 0, false);
+    });
+
+    document.getElementById('shuffle-play-btn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        playPlaylist({{ playlist.id }}, "{{ playlist.name|escapejs }}", playlistData, 0, true);
+    });
 
     const playlistTracks = document.getElementById('playlist-tracks');
     if (playlistTracks) {
@@ -220,29 +230,20 @@ document.addEventListener('DOMContentLoaded', function () {
             onEnd: function (evt) {
                 const trackIds = Array.from(evt.target.children).map(li => li.dataset.trackId);
                 const reorderUrl = "{% url 'reorder_playlist' playlist.id %}";
-
                 const formData = new FormData();
                 trackIds.forEach(id => formData.append('track_ids[]', id));
-
                 fetch(reorderUrl, {
                     method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
-                    },
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
                     body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.status !== 'success') {
-                        console.error('Failed to reorder playlist');
-                    } else {
-                        // Re-sync the playlistData array with the new order
-                        const reorderedPlaylistData = [];
-                        trackIds.forEach(id => {
-                            const track = playlistData.find(t => t.id == id);
-                            if(track) reorderedPlaylistData.push(track);
-                        });
+                    if (data.status === 'success') {
+                        const reorderedPlaylistData = trackIds.map(id => playlistData.find(t => t.id == id)).filter(Boolean);
                         playlistData = reorderedPlaylistData;
+                    } else {
+                        console.error('Failed to reorder playlist');
                     }
                 })
                 .catch(error => console.error('Error:', error));

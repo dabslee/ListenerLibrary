@@ -29,13 +29,13 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'play_focus' %}">Player</a>
+                            <a class="nav-link" href="{% url 'play_focus' %}" target="content-frame">Player</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'track_list' %}">Tracks</a>
+                            <a class="nav-link" href="{% url 'track_list' %}" target="content-frame">Tracks</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'playlist_list' %}">Playlists</a>
+                            <a class="nav-link" href="{% url 'playlist_list' %}" target="content-frame">Playlists</a>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

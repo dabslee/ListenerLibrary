@@ -1,16 +1,16 @@
-{% extends "base.html" %}
+{% extends "content_base.html" %}
 {% load static %}
 {% load player_extras %}
 {% load player_extras %}
 
-{% block content %}
+{% block main %}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Your Tracks</h2>
         <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
             {% with percentage=storage_percentage|default:0 %}
             <span class="small fst-italic {% if storage_percentage > 75 %}text-danger{% else %}text-muted{% endif %}">{{ storage_usage|format_bytes }} / {{ storage_limit|format_bytes }} ({{ percentage|floatformat:1 }}%) used.</span>
             {% endwith %}
-            <a href="{% url 'upload_track' %}" class="btn btn-primary"><i class="fas fa-upload me-1"></i> Upload Track</a>
+            <a href="{% url 'upload_track' %}" class="btn btn-primary" target="content-frame"><i class="fas fa-upload me-1"></i> Upload Track</a>
         </div>
     </div>
 
@@ -95,6 +95,33 @@
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('track-list-container').addEventListener('click', function(event) {
+        const playButton = event.target.closest('.play-track-btn');
+        if (playButton) {
+            event.preventDefault();
+            const trackUrl = playButton.dataset.trackUrl;
+            const trackName = playButton.dataset.trackName;
+            const trackArtist = playButton.dataset.trackArtist;
+            const iconUrl = playButton.dataset.iconUrl;
+            const trackId = playButton.dataset.trackId;
+            const trackType = playButton.dataset.trackType;
+            const position = playButton.dataset.position;
+            const duration = playButton.dataset.duration;
+
+            window.parent.postMessage({
+                action: 'playTrack',
+                trackUrl: trackUrl,
+                trackName: trackName,
+                trackArtist: trackArtist,
+                iconUrl: iconUrl,
+                trackId: trackId,
+                trackType: trackType,
+                position: position,
+                duration: duration
+            }, '{{ origin }}'.slice(0, -1));
+        }
+    });
+
     const titleSearchInput = document.getElementById('title-search-input');
     const transcriptSearchInput = document.getElementById('transcript-search-input');
     const artistFilter = document.getElementById('artist-filter');

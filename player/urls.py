@@ -2,9 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.track_list, name='track_list'),
+    path('', views.shell, name='shell'),
+    path('track_list/', views.track_list, name='track_list'),
+    path('player-frame/', views.player_frame, name='player_frame'),
     path('play_focus/', views.play_focus, name='play_focus'),
-    path('profile/', views.profile, name='profile'),
     path('register/', views.register, name='register'),
     path('upload/', views.upload_track, name='upload_track'),
     path('api/track/<int:track_id>/delete/', views.delete_track_api, name='delete_track_api'),

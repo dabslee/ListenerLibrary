@@ -463,6 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'playing';
             }
+            postStateUpdate();
         });
 
         audioPlayer.addEventListener('pause', () => {
@@ -472,6 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'paused';
             }
+            postStateUpdate();
         });
 
         audioPlayer.addEventListener('ended', () => {
@@ -492,6 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (currentTrack.type === 'podcast') {
                 updatePodcastProgressBar(currentTrack.id, currentTime, duration);
             }
+            postStateUpdate();
         });
 
         audioPlayer.addEventListener('error', (e) => console.error('Audio Player Error:', audioPlayer.error, 'Event:', e));
@@ -736,4 +739,67 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initializePlayer();
     initializeSleepTimer();
+
+    function postStateUpdate() {
+        if (!currentTrack) return;
+        window.parent.postMessage({
+            action: 'updatePlayerState',
+            state: {
+                trackId: currentTrack.id,
+                trackName: currentTrack.name,
+                trackArtist: currentTrack.artist,
+                trackArtUrl: playerIcon.src,
+                playlistName: currentPlaylist ? currentPlaylist.name : null,
+                isPlaying: !audioPlayer.paused,
+                currentTime: audioPlayer.currentTime,
+                duration: audioPlayer.duration,
+                playbackSpeed: audioPlayer.playbackRate,
+                isShuffled: isShuffle
+            }
+        }, '*'); // Will be secured in a later step
+    }
+
+    window.addEventListener('message', function(event) {
+        const data = event.data;
+        switch(data.action) {
+            case 'playTrack':
+                window.playTrack(data.trackUrl, data.trackName, data.trackArtist, data.iconUrl, data.trackId, data.trackType, data.position, data.duration);
+                break;
+            case 'playPlaylist':
+                window.playPlaylist(data.playlistId, data.playlistName, data.tracks, data.startIndex, data.shuffle);
+                break;
+            case 'playerControl':
+                handlePlayerControl(data.control, data.value);
+                break;
+        }
+    });
+
+    function handlePlayerControl(control, value) {
+        switch(control) {
+            case 'playPause':
+                if (audioPlayer.src) audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
+                break;
+            case 'prevTrack':
+                playPrevTrack();
+                break;
+            case 'nextTrack':
+                playNextTrack();
+                break;
+            case 'skip':
+                if (audioPlayer.src) audioPlayer.currentTime += value;
+                break;
+            case 'seek':
+                 if (audioPlayer.src) audioPlayer.currentTime = value;
+                break;
+            case 'seekTo':
+                if (audioPlayer.src) audioPlayer.currentTime = value;
+                break;
+            case 'setSpeed':
+                if (audioPlayer.src) audioPlayer.playbackRate = value;
+                break;
+            case 'toggleShuffle':
+                if (shuffleBtn) shuffleBtn.click();
+                break;
+        }
+    }
 });

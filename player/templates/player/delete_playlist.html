@@ -1,11 +1,20 @@
-{% extends "base.html" %}
+{% extends "content_base.html" %}
 
-{% block content %}
-    <h2>Delete Playlist</h2>
-    <p>Are you sure you want to delete the playlist "{{ playlist.name }}"?</p>
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Confirm Delete</button>
-        <a href="{% url 'playlist_list' %}" class="btn btn-secondary">Cancel</a>
-    </form>
+{% block main %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="mb-0">Delete Playlist</h2>
+        </div>
+        <div class="card-body">
+            <p>Are you sure you want to delete the playlist <strong>"{{ playlist.name }}"</strong>?</p>
+            <p class="text-danger">This action cannot be undone.</p>
+            <form method="post" target="_top">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                <a href="{% url 'playlist_list' %}" class="btn btn-secondary" target="content-frame">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
