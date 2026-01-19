@@ -1,0 +1,150 @@
+:root {
+  --bg-color: #f0f0f0;
+  --text-color: #212529;
+  --navbar-bg: #212529;
+  --navbar-text: #ffffff;
+  --card-bg: #ffffff;
+  --border-color: #dee2e6;
+  --table-hover-bg: #f2f2f2;
+}
+
+[data-theme="dark"] {
+  --bg-color: #212529;
+  --text-color: #f8f9fa;
+  --navbar-bg: #343a40;
+  --navbar-text: #ffffff;
+  --card-bg: #343a40;
+  --border-color: #495057;
+  --table-hover-bg: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light-blue"] {
+    --bg-color: #c4e2fa;
+    --text-color: #1f242d;
+    --navbar-bg: #0d47a1;
+    --navbar-text: #ffffff;
+    --card-bg: #e3f2fd;
+    --border-color: #90caf9;
+    --table-hover-bg: rgba(13, 71, 161, 0.05);
+}
+
+[data-theme="dark-blue"] {
+    --bg-color: #0d1b2a;
+    --text-color: #e0e1dd;
+    --navbar-bg: #1b263b;
+    --navbar-text: #ffffff;
+    --card-bg: #1b263b;
+    --border-color: #415a77;
+    --table-hover-bg: rgba(224, 225, 221, 0.05);
+}
+
+body {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.navbar {
+    background-color: var(--navbar-bg) !important;
+    color: var(--navbar-text) !important;
+}
+
+.navbar-dark .navbar-brand {
+    color: var(--navbar-text) !important;
+}
+
+.navbar-dark .nav-link {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.navbar-dark .nav-link.active {
+    color: #fff !important;
+}
+
+.card {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-color);
+}
+
+.table {
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+.table thead th {
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+    background-color: var(--card-bg) !important;
+}
+
+.table-hover tbody tr:hover {
+    color: var(--text-color);
+    background-color: var(--table-hover-bg) !important;
+}
+
+.list-group-item {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-color) !important;
+}
+
+.form-control, .form-select {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-color) !important;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: #86b7fe; /* Bootstrap default focus border, maybe theme this too? */
+}
+
+/* Modal Styling */
+.modal-content {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Footer Player Styling */
+footer.fixed-bottom {
+    background-color: var(--card-bg) !important;
+    border-top-color: var(--border-color) !important;
+    color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .text-muted {
+    color: rgba(248, 249, 250, 0.7) !important;
+}
+[data-theme="dark-blue"] .text-muted {
+    color: rgba(224, 225, 221, 0.7) !important;
+}
+
+/* Pagination container */
+.pagination .page-link {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+.pagination .page-item.active .page-link {
+    background-color: var(--navbar-bg); /* Use navbar color or primary for active */
+    border-color: var(--navbar-bg);
+    color: var(--navbar-text);
+}
+.pagination .page-item.disabled .page-link {
+    background-color: var(--bg-color);
+    border-color: var(--border-color);
+    opacity: 0.6;
+}
+
+/* Theme specific button overrides if needed */
+[data-theme="light-blue"] .btn-primary {
+    background-color: #1976d2;
+    border-color: #1976d2;
+}
+[data-theme="dark-blue"] .btn-primary {
+    background-color: #415a77;
+    border-color: #415a77;
+}
