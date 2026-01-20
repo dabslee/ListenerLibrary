@@ -25,40 +25,8 @@
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.created_at|date:'c' }}">{{ transcript.created_at|date:"M d, Y H:i" }}</span></td>
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.processing_started_at|date:'c' }}">{{ transcript.processing_started_at|date:"M d, Y H:i" }}</span></td>
                     <td><span class="local-datetime" data-local-datetime="{{ transcript.updated_at|date:'c' }}">{{ transcript.updated_at|date:"M d, Y H:i" }}</span></td>
-                    <td class="text-end">
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary btn-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'edit_track' transcript.track.id %}">
-                                        <i class="fas fa-edit me-2"></i>Edit track
-                                    </a>
-                                </li>
-                                {% if transcript.status == 'completed' %}
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'export_transcript' transcript.track.id %}">
-                                        <i class="fas fa-file-export me-2"></i>Export transcript SRT
-                                    </a>
-                                </li>
-                                {% endif %}
-                                {% if transcript.status == 'pending' %}
-                                <li>
-                                    <a class="dropdown-item text-danger cancel-transcript" href="#" data-track-id="{{ transcript.track.id }}">
-                                        <i class="fas fa-ban me-2"></i>Cancel transcription
-                                    </a>
-                                </li>
-                                {% endif %}
-                                {% if transcript.status == 'failed' %}
-                                <li>
-                                    <a class="dropdown-item retry-transcript" href="#" data-track-id="{{ transcript.track.id }}">
-                                        <i class="fas fa-rotate-right me-2"></i>Retry transcription
-                                    </a>
-                                </li>
-                                {% endif %}
-                            </ul>
-                        </div>
+                    <td class="text-end actions-cell">
+                        {% include "player/partials/transcript_actions.html" with show_edit_track=True %}
                     </td>
                 </tr>
                 {% empty %}
@@ -119,16 +87,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (idsToCheck.length === 0) return;
 
         idsToCheck.forEach(trackId => {
-            fetch(`/api/transcript/status/${trackId}/`)
+            fetch(`/api/transcript/status/${trackId}/?show_edit_track=true`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.html) {
                         const row = document.querySelector(`tr[data-track-id="${trackId}"]`);
                         if (row) {
-                            const cell = row.querySelector('.status-cell');
+                            const statusCell = row.querySelector('.status-cell');
                             // Only update if status changed or content is different
-                            if (cell.innerHTML.trim() !== data.html.trim()) {
-                                cell.innerHTML = data.html;
+                            if (statusCell.innerHTML.trim() !== data.html.trim()) {
+                                statusCell.innerHTML = data.html;
+                            }
+
+                            const actionsCell = row.querySelector('.actions-cell');
+                            if (actionsCell && data.actions_html) {
+                                actionsCell.innerHTML = data.actions_html;
+                                // Need to re-bind event listeners for newly added dropdown items
+                                bindActions(actionsCell);
                             }
                         }
                     }
@@ -139,72 +114,86 @@ document.addEventListener('DOMContentLoaded', function() {
 
     setInterval(checkStatus, pollInterval);
 
-    document.querySelectorAll('.cancel-transcript').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const trackId = this.dataset.trackId;
-            fetch(`/track/${trackId}/transcript/cancel/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
+    function bindActions(container) {
+        container.querySelectorAll('.cancel-transcript').forEach(link => {
+            if (link.dataset.bound) return;
+            link.dataset.bound = "true";
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const trackId = this.dataset.trackId;
+                if (confirm('Are you sure you want to cancel the transcription?')) {
+                    fetch(`/track/${trackId}/transcript/cancel/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const row = document.querySelector(`tr[data-track-id="${trackId}"]`);
+                            if (row) {
+                                const statusCell = row.querySelector('.status-cell');
+                                if (statusCell && data.html) {
+                                    statusCell.innerHTML = data.html;
+                                }
+                                // Actions cell will be updated by poll eventually, or we can update it now
+                                if (data.actions_html) {
+                                    const actionsCell = row.querySelector('.actions-cell');
+                                    actionsCell.innerHTML = data.actions_html;
+                                    bindActions(actionsCell);
+                                }
+                            }
+                            showToast('Transcription cancelled.', 'success');
+                        } else {
+                            showToast(data.message || 'Unable to cancel transcription.', 'error');
+                        }
+                    })
+                    .catch(() => showToast('Unable to cancel transcription.', 'error'));
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
+            });
+        });
+
+        container.querySelectorAll('.retry-transcript').forEach(link => {
+            if (link.dataset.bound) return;
+            link.dataset.bound = "true";
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const trackId = this.dataset.trackId;
+                const formData = new FormData();
+                formData.append('action', 'request');
+
+                fetch(`/track/${trackId}/transcript/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error();
+                    return fetch(`/api/transcript/status/${trackId}/?show_edit_track=true`);
+                })
+                .then(r => r.json())
+                .then(data => {
                     const row = document.querySelector(`tr[data-track-id="${trackId}"]`);
-                    if (row) {
+                    if (row && data.html) {
                         const statusCell = row.querySelector('.status-cell');
-                        if (statusCell && data.html) {
+                        if (statusCell) {
                             statusCell.innerHTML = data.html;
                         }
-                        // Remove cancel option
-                        const cancelItem = row.querySelector('.cancel-transcript')?.closest('li');
-                        if (cancelItem) {
-                            cancelItem.remove();
+                        if (data.actions_html) {
+                            const actionsCell = row.querySelector('.actions-cell');
+                            actionsCell.innerHTML = data.actions_html;
+                            bindActions(actionsCell);
                         }
                     }
-                    showToast('Transcription cancelled.', 'success');
-                } else {
-                    showToast(data.message || 'Unable to cancel transcription.', 'error');
-                }
-            })
-            .catch(() => showToast('Unable to cancel transcription.', 'error'));
+                    showToast('Transcription retry requested.', 'success');
+                })
+                .catch(() => showToast('Unable to retry transcription.', 'error'));
+            });
         });
-    });
+    }
 
-    document.querySelectorAll('.retry-transcript').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const trackId = this.dataset.trackId;
-            const formData = new FormData();
-            formData.append('action', 'request');
-
-            fetch(`/track/${trackId}/transcript/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken },
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) throw new Error();
-                return fetch(`/api/transcript/status/${trackId}/`);
-            })
-            .then(r => r.json())
-            .then(data => {
-                const row = document.querySelector(`tr[data-track-id="${trackId}"]`);
-                if (row && data.html) {
-                    const statusCell = row.querySelector('.status-cell');
-                    if (statusCell) {
-                        statusCell.innerHTML = data.html;
-                    }
-                    const retryItem = row.querySelector('.retry-transcript')?.closest('li');
-                    if (retryItem) retryItem.remove();
-                }
-                showToast('Transcription retry requested.', 'success');
-            })
-            .catch(() => showToast('Unable to retry transcription.', 'error'));
-        });
-    });
+    bindActions(document);
 });
 </script>
 {% endblock %}

@@ -1,0 +1,35 @@
+<div class="dropdown transcript-actions-dropdown" data-track-id="{{ transcript.track.id }}">
+    <button class="btn btn-sm btn-outline-secondary btn-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-ellipsis-v"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        {% if show_edit_track %}
+        <li>
+            <a class="dropdown-item" href="{% url 'edit_track' transcript.track.id %}">
+                <i class="fas fa-edit me-2"></i>Edit track
+            </a>
+        </li>
+        {% endif %}
+        {% if transcript.status == 'completed' %}
+        <li>
+            <a class="dropdown-item" href="{% url 'export_transcript' transcript.track.id %}">
+                <i class="fas fa-file-export me-2"></i>Export transcript SRT
+            </a>
+        </li>
+        {% endif %}
+        {% if transcript.status == 'pending' or transcript.status == 'processing' %}
+        <li>
+            <a class="dropdown-item text-danger cancel-transcript" href="#" data-track-id="{{ transcript.track.id }}">
+                <i class="fas fa-ban me-2"></i>Cancel transcription
+            </a>
+        </li>
+        {% endif %}
+        {% if transcript.status == 'failed' %}
+        <li>
+            <a class="dropdown-item retry-transcript" href="#" data-track-id="{{ transcript.track.id }}">
+                <i class="fas fa-rotate-right me-2"></i>Retry transcription
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</div>

@@ -40,9 +40,16 @@
             </div>
             <div class="card-body" id="transcript-status-container" data-track-id="{{ track.id }}">
                 {% if transcript %}
-                    <div class="mb-3 status-cell">
-                        <strong>Status:</strong>
-                        {% include "player/partials/transcript_status.html" %}
+                    <div class="mb-3 status-container d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Status:</strong>
+                            <span class="status-cell">
+                                {% include "player/partials/transcript_status.html" %}
+                            </span>
+                        </div>
+                        <div class="actions-cell">
+                            {% include "player/partials/transcript_actions.html" with show_edit_track=False %}
+                        </div>
                     </div>
                 <hr>
                 {% endif %}
@@ -91,23 +98,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const badge = container.querySelector('.badge');
         if (badge && (badge.textContent.trim().toLowerCase() === 'processing' || badge.textContent.trim().toLowerCase() === 'pending')) {
-             fetch(`/api/transcript/status/${trackId}/`)
+             fetch(`/api/transcript/status/${trackId}/?show_edit_track=false`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.html) {
-                        const cell = container.querySelector('.status-cell');
-                        // Use a temp element to check text content difference to avoid jitter/re-renders if same
-                        if (cell && cell.innerHTML.trim() !== `<strong>Status:</strong> ${data.html}`.trim() && cell.innerHTML.indexOf(data.html.trim()) === -1) {
-                             cell.innerHTML = `<strong>Status:</strong> ${data.html}`;
-                             // If completed, maybe reload or enable buttons?
-                             // For now, just update the badge is sufficient.
-                             if (data.status === 'completed') {
-                                 const btn = document.querySelector('button[type="submit"].btn-secondary');
-                                 if (btn) {
-                                     btn.textContent = 'Request Auto-Transcription';
-                                     btn.disabled = false;
-                                 }
-                             }
+                        const statusCell = container.querySelector('.status-cell');
+                        if (statusCell && statusCell.innerHTML.trim() !== data.html.trim()) {
+                             statusCell.innerHTML = data.html;
+                        }
+
+                        const actionsCell = container.querySelector('.actions-cell');
+                        if (actionsCell && data.actions_html) {
+                            actionsCell.innerHTML = data.actions_html;
+                        }
+
+                        if (data.status === 'completed') {
+                            const btn = document.querySelector('button[type="submit"].btn-secondary');
+                            if (btn) {
+                                btn.textContent = 'Request Auto-Transcription';
+                                btn.disabled = false;
+                            }
                         }
                     }
                 })
@@ -120,8 +130,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     container.addEventListener('click', function(e) {
-        if (e.target.classList.contains('cancel-transcript-btn')) {
-            const trackId = e.target.dataset.trackId;
+        const cancelBtn = e.target.closest('.cancel-transcript');
+        if (cancelBtn) {
+            e.preventDefault();
+            const trackId = cancelBtn.dataset.trackId;
             if (confirm('Are you sure you want to cancel the transcription?')) {
                 fetch(`/track/${trackId}/transcript/cancel/`, {
                     method: 'POST',
@@ -133,9 +145,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        const cell = container.querySelector('.status-cell');
-                        if (cell) {
-                            cell.innerHTML = `<strong>Status:</strong> ${data.html}`;
+                        const statusCell = container.querySelector('.status-cell');
+                        if (statusCell) {
+                            statusCell.innerHTML = data.html;
+                        }
+                        const actionsCell = container.querySelector('.actions-cell');
+                        if (actionsCell && data.actions_html) {
+                            actionsCell.innerHTML = data.actions_html;
                         }
                         const btn = document.querySelector('button[type="submit"].btn-secondary');
                         if (btn) {

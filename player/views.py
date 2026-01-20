@@ -369,8 +369,17 @@ def get_transcript_status(request, track_id):
 
     try:
         transcript = track.transcript
-        html = render_to_string('player/partials/transcript_status.html', {'transcript': transcript})
-        return JsonResponse({'status': transcript.status, 'html': html})
+        status_html = render_to_string('player/partials/transcript_status.html', {'transcript': transcript})
+        actions_html = render_to_string('player/partials/transcript_actions.html', {
+            'transcript': transcript,
+            'track': track,
+            'show_edit_track': request.GET.get('show_edit_track') == 'true'
+        }, request=request)
+        return JsonResponse({
+            'status': transcript.status,
+            'html': status_html,
+            'actions_html': actions_html
+        })
     except Transcript.DoesNotExist:
         return JsonResponse({'status': 'none', 'html': ''})
 
@@ -431,8 +440,17 @@ def cancel_transcript(request, track_id):
     transcript.error_message = 'Cancelled by user.'
     transcript.save()
 
-    html = render_to_string('player/partials/transcript_status.html', {'transcript': transcript})
-    return JsonResponse({'status': 'success', 'html': html})
+    status_html = render_to_string('player/partials/transcript_status.html', {'transcript': transcript})
+    actions_html = render_to_string('player/partials/transcript_actions.html', {
+        'transcript': transcript,
+        'track': track,
+        'show_edit_track': request.GET.get('show_edit_track') == 'true' or request.headers.get('Referer', '').endswith('/edit/')
+    }, request=request)
+    return JsonResponse({
+        'status': 'success',
+        'html': status_html,
+        'actions_html': actions_html
+    })
 
 @login_required
 def download_track(request, track_id):

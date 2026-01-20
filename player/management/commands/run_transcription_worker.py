@@ -5,7 +5,7 @@ import time
 import multiprocessing
 import warnings
 from django.utils import timezone
-from django.db import connection
+from django.db import connection, connections
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -17,7 +17,7 @@ def transcribe_task(audio_path, model_name, result_queue):
     try:
         import whisper
         # Close Django connections in the child process to avoid issues
-        connection.close()
+        connections.close_all()
 
         # Load model inside the process
         model = whisper.load_model(model_name)
@@ -72,6 +72,10 @@ class Command(BaseCommand):
             return
 
         result_queue = multiprocessing.Queue()
+
+        # Close all connections before starting a new process to avoid shared SSL sockets
+        connections.close_all()
+
         process = multiprocessing.Process(
             target=transcribe_task,
             args=(audio_path, "tiny", result_queue)
