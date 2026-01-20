@@ -3,6 +3,11 @@
     {% if transcript.status == 'processing' %}...
     {% endif %}
 </span>
+{% if transcript.status == 'pending' or transcript.status == 'processing' %}
+    <button class="btn btn-sm btn-outline-danger ms-2 cancel-transcript-btn" data-track-id="{{ transcript.track.id }}">
+        Cancel
+    </button>
+{% endif %}
 {% if transcript.status == 'failed' and transcript.error_message %}
     <span class="ms-1 text-danger">
         {{ transcript.error_message }}

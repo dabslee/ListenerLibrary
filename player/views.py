@@ -424,8 +424,8 @@ def cancel_transcript(request, track_id):
     except Transcript.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Transcript not found.'}, status=404)
 
-    if transcript.status != 'pending':
-        return JsonResponse({'status': 'error', 'message': 'Only pending transcripts can be cancelled.'}, status=400)
+    if transcript.status not in ['pending', 'processing']:
+        return JsonResponse({'status': 'error', 'message': 'Only pending or processing transcripts can be cancelled.'}, status=400)
 
     transcript.status = 'failed'
     transcript.error_message = 'Cancelled by user.'

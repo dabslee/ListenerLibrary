@@ -118,6 +118,38 @@ document.addEventListener('DOMContentLoaded', function() {
     if (trackId) {
         setInterval(checkStatus, pollInterval);
     }
+
+    container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('cancel-transcript-btn')) {
+            const trackId = e.target.dataset.trackId;
+            if (confirm('Are you sure you want to cancel the transcription?')) {
+                fetch(`/track/${trackId}/transcript/cancel/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const cell = container.querySelector('.status-cell');
+                        if (cell) {
+                            cell.innerHTML = `<strong>Status:</strong> ${data.html}`;
+                        }
+                        const btn = document.querySelector('button[type="submit"].btn-secondary');
+                        if (btn) {
+                            btn.textContent = 'Request Auto-Transcription';
+                            btn.disabled = false;
+                        }
+                    } else {
+                        alert('Error cancelling transcript: ' + data.message);
+                    }
+                })
+                .catch(err => console.error('Error cancelling transcript:', err));
+            }
+        }
+    });
 });
 </script>
 {% endblock %}
