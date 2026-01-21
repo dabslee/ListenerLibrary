@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, Track, UserPlaybackState, PodcastProgress, Bookmark, Transcript
+from .models import UserProfile, Track, UserPlaybackState, PodcastProgress, Bookmark, Transcript, UserTrackLastPlayed
 
 admin.site.register(Track)
 admin.site.register(UserPlaybackState)
@@ -7,3 +7,4 @@ admin.site.register(PodcastProgress)
 admin.site.register(Bookmark)
 admin.site.register(UserProfile)
 admin.site.register(Transcript)
+admin.site.register(UserTrackLastPlayed)
