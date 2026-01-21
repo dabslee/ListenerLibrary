@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const transcriptResultsDropdown = document.getElementById('transcript-results-dropdown');
 
     let transcriptSearchTimeout = null;
+    let transcriptSearchAbortController = null;
 
     function highlightText(text, query) {
         if (!query) return text;
@@ -123,12 +124,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         clearTimeout(transcriptSearchTimeout);
+        if (transcriptSearchAbortController) {
+            transcriptSearchAbortController.abort();
+        }
+
         transcriptSearchTimeout = setTimeout(() => {
-            fetch(`/api/search_transcripts/?q=${encodeURIComponent(query)}`)
+            transcriptSearchAbortController = new AbortController();
+            fetch(`/api/search_transcripts/?q=${encodeURIComponent(query)}`, {
+                signal: transcriptSearchAbortController.signal
+            })
                 .then(response => response.json())
                 .then(data => {
+                    transcriptResultsDropdown.innerHTML = '';
                     if (data.length > 0) {
-                        transcriptResultsDropdown.innerHTML = '';
                         data.forEach(result => {
                             const item = document.createElement('a');
                             item.className = 'dropdown-item d-flex align-items-center gap-2 py-2';
@@ -170,6 +178,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         transcriptResultsDropdown.appendChild(noResults);
                     }
                     transcriptResultsDropdown.style.display = 'block';
+                })
+                .catch(error => {
+                    if (error.name === 'AbortError') return;
+                    console.error('Error fetching transcripts:', error);
                 });
         }, 300);
     }
