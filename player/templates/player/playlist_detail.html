@@ -146,6 +146,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let transcriptSearchTimeout = null;
 
+    function highlightText(text, query) {
+        if (!query) return text;
+        const regex = new RegExp(`(${query})`, 'gi');
+        return text.replace(regex, '<mark class="p-0" style="background-color: yellow;">$1</mark>');
+    }
+
     function handleTranscriptSearch() {
         const query = transcriptSearchInput.value;
         if (query.length < 2) {
@@ -165,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             item.className = 'dropdown-item d-flex align-items-center gap-2 py-2';
                             item.href = '#';
                             item.style.whiteSpace = 'normal';
+                            const highlightedText = highlightText(result.text, query);
                             item.innerHTML = `
                                 <div class="flex-shrink-0">
                                     ${result.track_icon ? `<img src="${result.track_icon}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">` : `<div class="bg-secondary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 4px;"><i class="fas fa-music text-white small"></i></div>`}
@@ -174,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         <strong class="text-truncate" style="max-width: 150px;">${result.track_name}</strong>
                                         <small class="text-primary ms-2">${result.start_time_formatted}</small>
                                     </div>
-                                    <div class="small text-muted text-truncate">${result.text}</div>
+                                    <div class="small text-muted text-truncate">${highlightedText}</div>
                                 </div>
                             `;
                             item.addEventListener('click', (e) => {
@@ -225,17 +232,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchFilteredTracks() {
         const searchTitle = titleSearchInput.value;
-        const searchTranscript = transcriptSearchInput.value;
 
-        if (searchTitle || searchTranscript) {
+        if (searchTitle) {
             destroySortable();
         } else {
             initSortable();
         }
 
         const params = new URLSearchParams({
-            search_title: searchTitle,
-            search_transcript: searchTranscript
+            search_title: searchTitle
         });
         const url = `?${params.toString()}`;
 
@@ -252,7 +257,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     titleSearchInput.addEventListener('input', fetchFilteredTracks);
-    transcriptSearchInput.addEventListener('input', fetchFilteredTracks);
 
     function initTooltips() {
         const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
