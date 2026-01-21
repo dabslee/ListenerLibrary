@@ -3,6 +3,6 @@ Pillow
 mutagen
 pydub
 gunicorn
-psycopg2
+psycopg2-binary
 openai-whisper
 pysrt

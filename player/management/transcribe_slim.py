@@ -2,12 +2,16 @@ import sys
 import os
 import warnings
 import subprocess
-import json
 import tempfile
 import math
 
 # Suppress warnings from Whisper and its dependencies
 warnings.filterwarnings("ignore")
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 def format_timestamp(seconds):
     """Converts seconds to SRT timestamp format (HH:MM:SS,mmm)"""
@@ -66,11 +70,11 @@ def main():
 
     try:
         import whisper
-        import torch
-        # Limit torch to single thread to save resources and prevent OOM
-        torch.set_num_threads(1)
+        if torch:
+            # Limit torch to single thread to save resources and prevent OOM
+            torch.set_num_threads(1)
     except ImportError:
-        print("Error: Required packages (openai-whisper, torch) are not installed.")
+        print("Error: Required package (openai-whisper) is not installed.")
         sys.exit(1)
 
     duration = get_duration(audio_path)
@@ -131,5 +135,8 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    with torch.no_grad():
+    if torch:
+        with torch.no_grad():
+            main()
+    else:
         main()
