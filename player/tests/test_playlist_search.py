@@ -29,16 +29,15 @@ class PlaylistSearchTest(TestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].track.name, 'Apple')
 
-    def test_playlist_transcript_search(self):
-        # Search for 'cherry' in transcript
-        response = self.client.get(self.url, {'search_transcript': 'cherry'})
+    def test_playlist_transcript_search_dropdown_exists(self):
+        # We no longer filter by transcript search, so we just check if the input is there
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        items = response.context['playlist_items']
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0].track.name, 'Cherry')
+        self.assertIn('id="transcript-search-input"', response.content.decode())
+        self.assertIn('id="transcript-results-dropdown"', response.content.decode())
 
     def test_playlist_search_ajax(self):
-        # Search for 'Banana' via AJAX
+        # Search for 'Banana' via AJAX (title search)
         response = self.client.get(self.url, {'search_title': 'Banana'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(response.status_code, 200)
         data = response.json()

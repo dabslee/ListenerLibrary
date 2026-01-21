@@ -31,7 +31,6 @@ def track_list(request):
 
     # Filtering
     title_search_query = request.GET.get('search_title') or request.GET.get('search')
-    transcript_search_query = request.GET.get('search_transcript')
     selected_artist = request.GET.get('artist')
     selected_playlist_id = request.GET.get('playlist')
     sort_option = request.GET.get('sort', 'name')
@@ -41,8 +40,6 @@ def track_list(request):
             models.Q(name__icontains=title_search_query) |
             models.Q(artist__icontains=title_search_query)
         )
-    if transcript_search_query:
-        tracks_query = tracks_query.filter(transcript__content__icontains=transcript_search_query)
     if selected_artist:
         tracks_query = tracks_query.filter(artist=selected_artist)
     if selected_playlist_id:
@@ -108,7 +105,6 @@ def track_list(request):
         'selected_playlist_id': int(request.GET.get('playlist')) if request.GET.get('playlist') else None,
         'selected_artist': request.GET.get('artist'),
         'search_title_query': title_search_query,
-        'transcript_search_query': transcript_search_query,
         'sort_option': request.GET.get('sort', 'name'),
         'storage_usage': current_storage_usage,
         'storage_limit': user_storage_limit_bytes,
@@ -488,15 +484,12 @@ def playlist_detail(request, playlist_id):
 
     # Filtering
     title_search_query = request.GET.get('search_title') or request.GET.get('search')
-    transcript_search_query = request.GET.get('search_transcript')
 
     if title_search_query:
         playlist_items = playlist_items.filter(
             models.Q(track__name__icontains=title_search_query) |
             models.Q(track__artist__icontains=title_search_query)
         )
-    if transcript_search_query:
-        playlist_items = playlist_items.filter(track__transcript__content__icontains=transcript_search_query)
 
     # Get track IDs to fetch their progress in one go
     track_ids = [item.track.id for item in playlist_items]
@@ -547,7 +540,6 @@ def playlist_detail(request, playlist_id):
         'playlist': playlist,
         'playlist_items': playlist_items,
         'search_title_query': title_search_query,
-        'transcript_search_query': transcript_search_query,
     }
     return render(request, 'player/playlist_detail.html', context)
 
