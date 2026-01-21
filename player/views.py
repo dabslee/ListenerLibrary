@@ -892,6 +892,49 @@ def create_bookmark(request):
 
 
 @login_required
+def search_transcripts(request):
+    query = request.GET.get('q')
+    playlist_id = request.GET.get('playlist_id')
+    if not query or len(query) < 2:
+        return JsonResponse([], safe=False)
+
+    # Filter transcripts that belong to the user
+    transcripts_query = Transcript.objects.filter(track__owner=request.user, content__icontains=query)
+
+    if playlist_id:
+        transcripts_query = transcripts_query.filter(track__playlistitem__playlist_id=playlist_id)
+
+    results = []
+    # Limit to top 5 transcripts to avoid excessive SRT parsing in one request
+    # or we can parse all but limit the total number of segments.
+    for transcript in transcripts_query.select_related('track')[:10]:
+        try:
+            subs = pysrt.from_string(transcript.content)
+            for sub in subs:
+                if query.lower() in sub.text.lower():
+                    results.append({
+                        'track_id': transcript.track.id,
+                        'track_name': transcript.track.name,
+                        'track_artist': transcript.track.artist,
+                        'track_icon': request.build_absolute_uri(transcript.track.icon.url) if transcript.track.icon else None,
+                        'track_stream_url': request.build_absolute_uri(reverse('stream_track', args=[transcript.track.id])),
+                        'track_type': transcript.track.type,
+                        'track_duration': transcript.track.duration,
+                        'start_time': sub.start.ordinal / 1000.0,
+                        'text': sub.text.replace('\n', ' '),
+                        'start_time_formatted': str(sub.start).split(',')[0] # HH:MM:SS
+                    })
+                    if len(results) >= 20: # Limit total results
+                        break
+            if len(results) >= 20:
+                break
+        except Exception as e:
+            logging.error(f"Error parsing transcript {transcript.id}: {e}")
+
+    return JsonResponse(results, safe=False)
+
+
+@login_required
 def stream_track(request, track_id):
     track = get_object_or_404(Track, pk=track_id, owner=request.user)
     path = track.file.path

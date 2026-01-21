@@ -55,9 +55,12 @@
                     </div>
                 </div>
                 <div class="row g-3 align-items-end mt-2">
-                    <div class="col-md-6 col-lg-12">
+                    <div class="col-md-6 col-lg-12 position-relative">
                         <label for="transcript-search-input" class="form-label">Transcript Search</label>
-                        <input type="text" id="transcript-search-input" class="form-control" value="{{ transcript_search_query|default:'' }}" placeholder="Transcript text...">
+                        <input type="text" id="transcript-search-input" class="form-control" value="{{ transcript_search_query|default:'' }}" placeholder="Transcript text..." autocomplete="off">
+                        <div id="transcript-results-dropdown" class="dropdown-menu w-100 shadow" style="display: none; max-height: 300px; overflow-y: auto;">
+                            <!-- Results will be injected here -->
+                        </div>
                     </div>
                 </div>
             </form>
@@ -102,6 +105,73 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortSelect = document.getElementById('sort-select');
     const trackListContainer = document.getElementById('track-list-container');
     const paginationContainer = document.getElementById('pagination-container');
+    const transcriptResultsDropdown = document.getElementById('transcript-results-dropdown');
+
+    let transcriptSearchTimeout = null;
+
+    function handleTranscriptSearch() {
+        const query = transcriptSearchInput.value;
+        if (query.length < 2) {
+            transcriptResultsDropdown.style.display = 'none';
+            return;
+        }
+
+        clearTimeout(transcriptSearchTimeout);
+        transcriptSearchTimeout = setTimeout(() => {
+            fetch(`/api/search_transcripts/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        transcriptResultsDropdown.innerHTML = '';
+                        data.forEach(result => {
+                            const item = document.createElement('a');
+                            item.className = 'dropdown-item d-flex align-items-center gap-2 py-2';
+                            item.href = '#';
+                            item.style.whiteSpace = 'normal';
+                            item.innerHTML = `
+                                <div class="flex-shrink-0">
+                                    ${result.track_icon ? `<img src="${result.track_icon}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">` : `<div class="bg-secondary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 4px;"><i class="fas fa-music text-white small"></i></div>`}
+                                </div>
+                                <div class="flex-grow-1 min-width-0">
+                                    <div class="d-flex justify-content-between align-items-baseline">
+                                        <strong class="text-truncate" style="max-width: 150px;">${result.track_name}</strong>
+                                        <small class="text-primary ms-2">${result.start_time_formatted}</small>
+                                    </div>
+                                    <div class="small text-muted text-truncate">${result.text}</div>
+                                </div>
+                            `;
+                            item.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                window.playTrack(
+                                    result.track_stream_url,
+                                    result.track_name,
+                                    result.track_artist,
+                                    result.track_icon,
+                                    result.track_id,
+                                    result.track_type,
+                                    result.start_time,
+                                    result.track_duration
+                                );
+                                transcriptResultsDropdown.style.display = 'none';
+                            });
+                            transcriptResultsDropdown.appendChild(item);
+                        });
+                        transcriptResultsDropdown.style.display = 'block';
+                    } else {
+                        transcriptResultsDropdown.style.display = 'none';
+                    }
+                });
+        }, 300);
+    }
+
+    transcriptSearchInput.addEventListener('input', handleTranscriptSearch);
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!transcriptSearchInput.contains(e.target) && !transcriptResultsDropdown.contains(e.target)) {
+            transcriptResultsDropdown.style.display = 'none';
+        }
+    });
 
     function initTooltips() {
         const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');

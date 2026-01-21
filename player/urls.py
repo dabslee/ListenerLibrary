@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/update_playback_state/', views.update_playback_state, name='update_playback_state'),
     path('api/track/<int:track_id>/transcript/', views.get_transcript_json, name='get_transcript_json'),
     path('api/transcript/status/<int:track_id>/', views.get_transcript_status, name='get_transcript_status'),
+    path('api/search_transcripts/', views.search_transcripts, name='search_transcripts'),
     path('transcripts/', views.transcript_list, name='transcript_list'),
 
     # Playlist URLs
