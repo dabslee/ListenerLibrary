@@ -1,0 +1,70 @@
+{% load player_extras %}
+{% for item in playlist_items %}
+    <li class="list-group-item d-flex flex-column flex-lg-row justify-content-between"
+        data-track-id="{{ item.track.id }}"
+        id="playlist-item-{{ item.track.id }}"
+        data-testid="track-item-{{ item.track.id }}">
+        <div class="flex-grow-1 d-flex align-items-center" style="cursor: pointer;" onclick="window.playPlaylist({{ playlist.id }}, '{{ playlist.name|escapejs }}', playlistData, {{ forloop.counter0 }})">
+            <i class="fas fa-grip-vertical me-3" style="cursor: move;"></i>
+            {% if item.track.icon %}
+                <img src="{{ item.track.icon.url }}" alt="{{ item.track.name }}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;" class="me-3">
+            {% else %}
+                <div class="bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 4px;">
+                    <i class="fas fa-music text-white"></i>
+                </div>
+            {% endif %}
+            <div>
+                <h6 class="mb-0">
+                    {{ item.track.name }}
+                    {% if item.track.get_type_display == 'Podcast' %}
+                        <i class="fas fa-book ms-2 text-secondary" data-bs-toggle="tooltip" title="Podcast"></i>
+                        {% if item.track.transcript %}
+                            <i class="fas fa-font ms-1 text-secondary" data-bs-toggle="tooltip" title="Transcribed"></i>
+                        {% endif %}
+                    {% endif %}
+                </h6>
+                {% if item.track.artist %}
+                    <small class="text-muted">By {{ item.track.artist }}</small>
+                {% endif %}
+            </div>
+            <div class="mb-2 d-lg-none d-block flex-grow-1 text-end">
+                <button class="btn btn-outline-danger btn-sm"
+                        onclick="event.stopPropagation();"
+                        data-bs-toggle="modal"
+                        data-bs-target="#removeTrackModal"
+                        data-playlist-id="{{ playlist.id }}"
+                        data-track-id="{{ item.track.id }}"
+                        data-track-name="{{ item.track.name|escapejs }}"
+                        title="Remove from Playlist">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+        <div class="d-flex flex-row align-items-center justify-content-end" style="min-width: 150px;">
+            {% if item.track.type == 'podcast' %}
+                <div class="w-100 me-3 mt-2 mt-lg-0">
+                    <div class="progress" style="height: 5px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ item.track.progress_percentage|default:0 }}%;" aria-valuenow="{{ item.track.progress_percentage|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-end d-none d-lg-block">
+                        <small class="text-muted podcast-progress-time">{{ item.track.position|format_duration }} / {{ item.track.duration|format_duration }}</small>
+                    </div>
+                </div>
+            {% endif %}
+            <div class="mb-2 d-lg-block d-none">
+                <button class="btn btn-outline-danger btn-sm"
+                        onclick="event.stopPropagation();"
+                        data-bs-toggle="modal"
+                        data-bs-target="#removeTrackModal"
+                        data-playlist-id="{{ playlist.id }}"
+                        data-track-id="{{ item.track.id }}"
+                        data-track-name="{{ item.track.name|escapejs }}"
+                        title="Remove from Playlist">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+    </li>
+{% empty %}
+    <li class="list-group-item">This playlist is empty.</li>
+{% endfor %}

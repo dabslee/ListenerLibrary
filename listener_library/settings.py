@@ -73,7 +73,8 @@ WSGI_APPLICATION = "listener_library.wsgi.application"
 import sys
 
 # Use a fallback SQLite database for tests to run in CI/CD environments
-if 'test' in sys.argv:
+import os
+if 'test' in sys.argv or os.environ.get('USE_SQLITE') == '1':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

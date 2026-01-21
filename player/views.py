@@ -50,7 +50,9 @@ def track_list(request):
 
     # Sorting
     if sort_option == 'last_played':
-        tracks_query = tracks_query.order_by('-usertracklastplayed__last_played')
+        tracks_query = tracks_query.annotate(
+            user_last_played=models.Max('usertracklastplayed__last_played', filter=models.Q(usertracklastplayed__user=request.user))
+        ).order_by(models.F('user_last_played').desc(nulls_last=True))
     else: # 'name'
         tracks_query = tracks_query.order_by('name')
 
@@ -484,6 +486,18 @@ def playlist_detail(request, playlist_id):
     # Use select_related to fetch track details efficiently to prevent N+1 queries
     playlist_items = playlist.playlistitem_set.select_related('track', 'track__transcript').all()
 
+    # Filtering
+    title_search_query = request.GET.get('search_title') or request.GET.get('search')
+    transcript_search_query = request.GET.get('search_transcript')
+
+    if title_search_query:
+        playlist_items = playlist_items.filter(
+            models.Q(track__name__icontains=title_search_query) |
+            models.Q(track__artist__icontains=title_search_query)
+        )
+    if transcript_search_query:
+        playlist_items = playlist_items.filter(track__transcript__content__icontains=transcript_search_query)
+
     # Get track IDs to fetch their progress in one go
     track_ids = [item.track.id for item in playlist_items]
 
@@ -492,6 +506,7 @@ def playlist_detail(request, playlist_id):
     podcast_progress_map = {p.track_id: p.position for p in podcast_progress}
 
     # Attach progress data to each track object
+    tracks_json_data = []
     for item in playlist_items:
         track = item.track
         if track.type == 'podcast':
@@ -506,9 +521,33 @@ def playlist_detail(request, playlist_id):
             track.position = 0
             track.progress_percentage = 0
 
+        tracks_json_data.append({
+            'id': track.id,
+            'name': track.name,
+            'artist': track.artist,
+            'stream_url': request.build_absolute_uri(reverse('stream_track', args=[track.id])),
+            'icon_url': request.build_absolute_uri(track.icon.url) if track.icon else None,
+            'type': track.type,
+            'position': track.position,
+            'duration': track.duration or 0
+        })
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            'player/partials/playlist_item_list.html',
+            {'playlist': playlist, 'playlist_items': playlist_items},
+            request=request
+        )
+        return JsonResponse({
+            'html': html,
+            'playlist_data': tracks_json_data
+        })
+
     context = {
         'playlist': playlist,
         'playlist_items': playlist_items,
+        'search_title_query': title_search_query,
+        'transcript_search_query': transcript_search_query,
     }
     return render(request, 'player/playlist_detail.html', context)
 
