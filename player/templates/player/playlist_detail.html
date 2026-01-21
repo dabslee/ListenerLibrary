@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         <strong class="text-truncate" style="max-width: 150px;">${result.track_name}</strong>
                                         <small class="text-primary ms-2">${result.start_time_formatted}</small>
                                     </div>
-                                    <div class="small text-muted text-truncate">${highlightedText}</div>
+                                    <div class="small text-muted" style="word-wrap: break-word;">${highlightedText}</div>
                                 </div>
                             `;
                             item.addEventListener('click', (e) => {
@@ -213,10 +213,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             });
                             transcriptResultsDropdown.appendChild(item);
                         });
-                        transcriptResultsDropdown.style.display = 'block';
                     } else {
-                        transcriptResultsDropdown.style.display = 'none';
+                        const noResults = document.createElement('div');
+                        noResults.className = 'dropdown-item text-muted py-2';
+                        noResults.textContent = 'No results found';
+                        transcriptResultsDropdown.appendChild(noResults);
                     }
+                    transcriptResultsDropdown.style.display = 'block';
                 });
         }, 300);
     }
