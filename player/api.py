@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, status, filters
+from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import models, transaction
@@ -228,90 +228,82 @@ class BookmarkViewSet(viewsets.ModelViewSet):
         return Bookmark.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        if 'track' not in self.request.data:
-            try:
-                state = UserPlaybackState.objects.get(user=self.request.user)
-                if state.track:
-                    serializer.save(
-                        user=self.request.user,
-                        track=state.track,
-                        position=state.last_played_position,
-                        playlist=state.playlist,
-                        shuffle=state.shuffle
-                    )
-                else:
-                    raise serializers.ValidationError("No active track to bookmark")
-            except UserPlaybackState.DoesNotExist:
-                 raise serializers.ValidationError("No playback state found")
-        else:
-            serializer.save(user=self.request.user)
+        try:
+            state = UserPlaybackState.objects.get(user=self.request.user)
+            serializer.save(
+                user=self.request.user,
+                track=state.track,
+                position=state.last_played_position,
+                playlist=state.playlist,
+                shuffle=state.shuffle
+            )
+        except UserPlaybackState.DoesNotExist:
+            raise serializers.ValidationError({"error": "No playback state found"})
 
     @action(detail=True, methods=['post'])
     def play(self, request, pk=None):
         bookmark = self.get_object()
         if not bookmark.track:
-             return Response({'status': 'error', 'message': 'Bookmark has no associated track'}, status=404)
+            return Response({'status': 'error', 'message': 'Bookmark has no associated track.'}, status=status.HTTP_404_NOT_FOUND)
 
-        UserPlaybackState.objects.update_or_create(
+        playback_state, _ = UserPlaybackState.objects.update_or_create(
             user=request.user,
             defaults={
                 'track': bookmark.track,
                 'last_played_position': bookmark.position,
                 'playlist': bookmark.playlist,
-                'shuffle': bookmark.shuffle
+                'shuffle': bookmark.shuffle,
             }
         )
-        return Response({'status': 'success'})
+        serializer = UserPlaybackStateSerializer(playback_state, context={'request': request})
+        return Response({'status': 'success', 'playback_state': serializer.data})
 
-class UserPlaybackStateViewSet(viewsets.ViewSet):
+class UserPlaybackStateViewSet(viewsets.ModelViewSet):
+    queryset = UserPlaybackState.objects.all()
+    serializer_class = UserPlaybackStateSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def list(self, request):
-        try:
-            state = UserPlaybackState.objects.get(user=request.user)
-            serializer = UserPlaybackStateSerializer(state, context={'request': request})
-            return Response(serializer.data)
-        except UserPlaybackState.DoesNotExist:
-            return Response({})
+    def get_queryset(self):
+        return UserPlaybackState.objects.filter(user=self.request.user)
 
-    @action(detail=False, methods=['post'])
-    def update_state(self, request):
+    def create(self, request, *args, **kwargs):
         track_id = request.data.get('track_id')
         position = request.data.get('position')
         playlist_id = request.data.get('playlist_id')
         shuffle = request.data.get('shuffle', False)
 
-        if track_id:
-            track = get_object_or_404(Track, pk=track_id, owner=request.user)
-            playlist = None
-            if playlist_id:
-                playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+        if track_id is None or position is None:
+            return Response({'error': 'track_id and position are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            state, _ = UserPlaybackState.objects.update_or_create(
-                user=request.user,
-                defaults={
-                    'track': track,
-                    'last_played_position': position,
-                    'playlist': playlist,
-                    'shuffle': shuffle
-                }
-            )
+        track = get_object_or_404(Track, pk=track_id, owner=request.user)
+        playlist = None
+        if playlist_id:
+            playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
 
-            UserTrackLastPlayed.objects.update_or_create(
+        state, _ = UserPlaybackState.objects.update_or_create(
+            user=request.user,
+            defaults={
+                'track': track,
+                'last_played_position': position,
+                'playlist': playlist,
+                'shuffle': shuffle,
+            }
+        )
+
+        UserTrackLastPlayed.objects.update_or_create(
+            user=request.user,
+            track=track,
+            defaults={'last_played': models.functions.Now()}
+        )
+
+        if track.type == 'podcast':
+            PodcastProgress.objects.update_or_create(
                 user=request.user,
                 track=track,
-                defaults={'last_played': models.functions.Now()}
+                defaults={'position': position}
             )
 
-            if track.type == 'podcast':
-                PodcastProgress.objects.update_or_create(
-                    user=request.user,
-                    track=track,
-                    defaults={'position': position}
-                )
-
-            return Response({'status': 'success'})
-        return Response({'status': 'error', 'message': 'Missing track_id'}, status=400)
+        return Response({'status': 'success'})
 
 class UserProfileViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]

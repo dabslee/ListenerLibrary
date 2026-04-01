@@ -63,7 +63,7 @@ class Transcript(models.Model):
 class UserPlaybackState(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     track = models.ForeignKey(Track, on_delete=models.SET_NULL, null=True, blank=True)
-    last_played_position = models.FloatField(default=0)
+    last_played_position = models.FloatField(default=0, null=True)
     shuffle = models.BooleanField(default=False)
     playlist = models.ForeignKey('Playlist', on_delete=models.SET_NULL, null=True, blank=True)
 
