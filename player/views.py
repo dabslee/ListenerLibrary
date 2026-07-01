@@ -458,9 +458,15 @@ def download_track(request, track_id):
 
 @login_required
 def playlist_list(request):
-    playlists = Playlist.objects.filter(owner=request.user)
+    playlists = Playlist.objects.filter(
+        models.Q(owner=request.user) | models.Q(accessors=request.user)
+    ).distinct()
     form = PlaylistUploadForm()
-    return render(request, 'player/playlist_list.html', {'playlists': playlists, 'upload_form': form})
+    return render(request, 'player/playlist_list.html', {
+        'playlists': playlists,
+        'upload_form': form,
+        'current_user_id': request.user.id,
+    })
 
 @login_required
 def create_playlist(request):
@@ -476,11 +482,24 @@ def create_playlist(request):
         form = PlaylistForm(user=request.user)
     return render(request, 'player/create_playlist.html', {'form': form})
 
+def _accessible_playlists(user):
+    """Playlists a user may view/play: ones they own or are an accessor of."""
+    return Playlist.objects.filter(
+        models.Q(owner=user) | models.Q(accessors=user)
+    ).distinct()
+
+
 @login_required
 def playlist_detail(request, playlist_id):
-    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    playlist = get_object_or_404(_accessible_playlists(request.user), pk=playlist_id)
+    is_owner = playlist.owner_id == request.user.id
     # Use select_related to fetch track details efficiently to prevent N+1 queries
     playlist_items = playlist.playlistitem_set.select_related('track', 'track__transcript').all()
+
+    # Total length of the whole playlist (independent of any active filter)
+    total_duration = playlist.playlistitem_set.aggregate(
+        total=models.Sum('track__duration')
+    )['total'] or 0
 
     # Filtering
     title_search_query = request.GET.get('search_title') or request.GET.get('search')
@@ -528,7 +547,7 @@ def playlist_detail(request, playlist_id):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         html = render_to_string(
             'player/partials/playlist_item_list.html',
-            {'playlist': playlist, 'playlist_items': playlist_items},
+            {'playlist': playlist, 'playlist_items': playlist_items, 'is_owner': is_owner},
             request=request
         )
         return JsonResponse({
@@ -540,6 +559,8 @@ def playlist_detail(request, playlist_id):
         'playlist': playlist,
         'playlist_items': playlist_items,
         'search_title_query': title_search_query,
+        'is_owner': is_owner,
+        'total_duration': total_duration,
     }
     return render(request, 'player/playlist_detail.html', context)
 
@@ -741,10 +762,16 @@ def update_playback_state(request):
         if track_id is None or position is None:
             return JsonResponse({'status': 'error', 'message': 'Missing track_id or position'}, status=400)
 
-        track = get_object_or_404(Track, pk=track_id, owner=request.user)
+        track = get_object_or_404(
+            Track.objects.filter(
+                models.Q(owner=request.user) |
+                models.Q(playlists__accessors=request.user)
+            ).distinct(),
+            pk=track_id,
+        )
         playlist = None
         if playlist_id:
-            playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+            playlist = get_object_or_404(_accessible_playlists(request.user), pk=playlist_id)
 
         # Update general playback state
         UserPlaybackState.objects.update_or_create(
@@ -782,7 +809,7 @@ def update_playback_state(request):
 
 @login_required
 def playlist_tracks_api(request, playlist_id):
-    playlist = get_object_or_404(Playlist, pk=playlist_id, owner=request.user)
+    playlist = get_object_or_404(_accessible_playlists(request.user), pk=playlist_id)
     items = playlist.playlistitem_set.select_related('track').order_by('order')
     track_ids = [item.track.id for item in items]
 
@@ -890,8 +917,13 @@ def search_transcripts(request):
     if not query or len(query) < 2:
         return JsonResponse([], safe=False)
 
-    # Filter transcripts that belong to the user
-    transcripts_query = Transcript.objects.filter(track__owner=request.user, content__icontains=query)
+    # Filter transcripts the user can reach: their own tracks, or tracks in a
+    # playlist they have been granted access to.
+    transcripts_query = Transcript.objects.filter(
+        models.Q(track__owner=request.user) |
+        models.Q(track__playlists__accessors=request.user),
+        content__icontains=query,
+    ).distinct()
 
     if playlist_id:
         transcripts_query = transcripts_query.filter(track__playlistitem__playlist_id=playlist_id)
@@ -928,7 +960,15 @@ def search_transcripts(request):
 
 @login_required
 def stream_track(request, track_id):
-    track = get_object_or_404(Track, pk=track_id, owner=request.user)
+    # The owner can stream any of their tracks; accessors can stream tracks
+    # that belong to a playlist they have been granted access to.
+    track = get_object_or_404(
+        Track.objects.filter(
+            models.Q(owner=request.user) |
+            models.Q(playlists__accessors=request.user)
+        ).distinct(),
+        pk=track_id,
+    )
     path = track.file.path
     size = os.path.getsize(path)
     content_type, _ = mimetypes.guess_type(path)

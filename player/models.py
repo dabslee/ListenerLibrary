@@ -86,11 +86,21 @@ class PodcastProgress(models.Model):
 class Playlist(models.Model):
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    accessors = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='accessible_playlists',
+        help_text='Users who can view and play (but not edit) this playlist.',
+    )
     image = models.ImageField(upload_to='playlist_images/', null=True, blank=True)
     tracks = models.ManyToManyField(Track, through='PlaylistItem', related_name='playlists')
 
     def __str__(self):
         return self.name
+
+    def is_accessible_by(self, user):
+        """The owner and any accessor may view/play the playlist."""
+        return self.owner_id == user.id or self.accessors.filter(pk=user.id).exists()
 
 import sys
 class PlaylistItem(models.Model):

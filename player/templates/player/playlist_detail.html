@@ -3,10 +3,15 @@
 
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>{{ playlist.name }}</h2>
+        <div>
+            <h2 class="mb-0">{{ playlist.name }}</h2>
+            <small class="text-muted"><i class="far fa-clock me-1"></i>Total length: {{ total_duration|format_duration }}</small>
+        </div>
         <div class="d-flex flex-wrap justify-content-end gap-1">
             <button id="play-all-btn" class="btn btn-success"><i class="fas fa-play me-2"></i>Play All</button>
+            {% if is_owner %}
             <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary"><i class="fas fa-pen me-2"></i>Edit Playlist Details</a>
+            {% endif %}
         </div>
     </div>
 
@@ -97,7 +102,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let sortableInstance = null;
     let transcriptSearchAbortController = null;
 
+    const isOwner = {{ is_owner|yesno:"true,false" }};
+
     function initSortable() {
+        if (!isOwner) return;
         if (playlistTracks && !sortableInstance) {
             sortableInstance = new Sortable(playlistTracks, {
                 animation: 150,
