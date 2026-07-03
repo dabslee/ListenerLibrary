@@ -26,3 +26,7 @@ listener_library/secrets.py
 *.egg-info/
 dist/
 build/
+# runtime artifacts
+*.log
+nohup.out
+*.bak.*

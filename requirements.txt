@@ -6,3 +6,4 @@ gunicorn
 psycopg2-binary
 openai-whisper
 pysrt
+audioop-lts  # py3.13 removed stdlib audioop; pydub needs it

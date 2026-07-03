@@ -1,0 +1,12 @@
+venv/
+media/
+staticfiles/
+screenshots/
+__pycache__/
+*.pyc
+*.log
+*.bak
+*.bak.*
+nohup.out
+.git/
+listener_library/secrets.py

@@ -1,0 +1,32 @@
+# One image, three processes. Host network: web binds 127.0.0.1:5000 (as before)
+# and all services reach the localhost-only host Postgres.
+x-app: &app
+  build: .
+  image: listenerlibrary
+  network_mode: host
+  user: "1000:1000"
+  restart: unless-stopped
+  volumes:
+    - ./listener_library/secrets.py:/app/listener_library/secrets.py:ro  # secrets never in image
+    - ./media:/app/media                                                 # 11GB audio library (host nginx serves it)
+    - ./staticfiles:/app/staticfiles                                     # collectstatic target (host nginx serves it)
+
+services:
+  web:
+    <<: *app
+    container_name: listenerlibrary-web
+
+  duration_worker:
+    <<: *app
+    container_name: listenerlibrary-duration
+    command: python manage.py fix_track_durations
+
+  transcription_worker:
+    <<: *app
+    container_name: listenerlibrary-transcribe
+    command: python manage.py run_transcription_worker
+    volumes:
+      - ./listener_library/secrets.py:/app/listener_library/secrets.py:ro
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+      - /home/blee/.cache/whisper:/app/.cache/whisper                    # model cache (73MB, no re-downloads)
