@@ -120,6 +120,68 @@
         return entry.fraction == null ? '…' : Math.round(entry.fraction * 100) + '%';
     }
 
+    // ---- Navigation warning while downloading ---------------------------------
+    // Downloads run in the page, so navigating away cancels them. Warn the user
+    // with a banner while any download is active here, confirm before following
+    // in-app links, and arm beforeunload for full page unloads.
+    function localDownloadCount() {
+        let count = 0;
+        progress.forEach(function (entry) { if (entry.local) count++; });
+        return count;
+    }
+
+    function hasActiveLocalWork() {
+        return localDownloadCount() > 0 || playlistSaveState.active;
+    }
+
+    function updateDownloadWarningBanner() {
+        const active = hasActiveLocalWork();
+        let banner = document.getElementById('offline-download-warning');
+        if (!active) {
+            if (banner) banner.remove();
+            return;
+        }
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'offline-download-warning';
+            banner.className = 'offline-download-warning alert alert-warning shadow d-flex align-items-center py-2 px-3 mb-0';
+            banner.setAttribute('role', 'status');
+            banner.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><small class="offline-dl-warn-text"></small>';
+            document.body.appendChild(banner);
+        }
+        let what;
+        if (playlistSaveState.active) {
+            what = 'Saving playlist (' + Math.min(playlistSaveState.done + 1, playlistSaveState.total) + '/' + playlistSaveState.total + ')';
+        } else {
+            const count = localDownloadCount();
+            what = 'Saving ' + count + ' track' + (count === 1 ? '' : 's');
+        }
+        setText(banner.querySelector('.offline-dl-warn-text'),
+            what + ' — stay on this page. Navigating away will cancel the download.');
+    }
+
+    window.addEventListener('beforeunload', function (event) {
+        if (hasActiveLocalWork()) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
+
+    // Capture-phase so this runs before the link navigates or other handlers act.
+    document.addEventListener('click', function (event) {
+        if (!hasActiveLocalWork()) return;
+        const link = event.target.closest('a[href]');
+        if (!link) return;
+        const href = link.getAttribute('href');
+        // Only real in-app navigations: skip hash links, new tabs, and
+        // Bootstrap toggles (dropdowns/modals), which don't leave the page.
+        if (!href || href.charAt(0) === '#' || link.target === '_blank' || link.dataset.bsToggle) return;
+        if (!window.confirm('A download is in progress and navigating away will cancel it. Leave this page anyway?')) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+
     // ---- Progress rendering ---------------------------------------------------
     function renderProgressUI(id) {
         const entry = progress.get(id);
@@ -151,6 +213,7 @@
 
         updateDownloadsPageProgress(id, entry);
         updatePlaylistButtonProgressText();
+        updateDownloadWarningBanner();
     }
 
     // ---- Streaming fetch with progress ---------------------------------------
@@ -336,6 +399,7 @@
         playlistSaveState = { active: true, done: 0, total: pending.length, currentId: null };
         btn.disabled = true;
         setClass(btn.querySelector('i'), 'fas fa-spinner fa-spin me-2');
+        updateDownloadWarningBanner();
 
         let failures = 0;
         for (const track of pending) {
@@ -348,6 +412,7 @@
 
         playlistSaveState = { active: false, done: 0, total: 0, currentId: null };
         btn.disabled = false;
+        updateDownloadWarningBanner();
         if (failures) {
             toast('Playlist saved with ' + failures + ' failed track' + (failures === 1 ? '' : 's') + '.', 'error');
         } else {
