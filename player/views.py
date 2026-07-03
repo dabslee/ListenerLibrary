@@ -118,6 +118,27 @@ def track_list(request):
 def play_focus(request):
     return render(request, 'player/play_focus.html')
 
+
+@login_required
+def downloads(request):
+    """Offline library page. The track list is populated client-side from
+    IndexedDB so it works even with no network connection."""
+    return render(request, 'player/downloads.html')
+
+
+def service_worker(request):
+    """Serve the service worker from the site root so its scope covers the
+    whole origin."""
+    response = render(request, 'player/sw.js', content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/'
+    response['Cache-Control'] = 'no-cache'
+    return response
+
+
+def web_manifest(request):
+    """Serve the PWA web app manifest."""
+    return render(request, 'player/manifest.json', content_type='application/manifest+json')
+
 @login_required
 def profile(request):
     return render(request, 'registration/profile.html')

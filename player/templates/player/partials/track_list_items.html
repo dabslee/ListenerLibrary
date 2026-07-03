@@ -62,7 +62,20 @@
                         <li><span class="dropdown-item disabled">No playlists yet</span></li>
                     {% endfor %}
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{% url 'download_track' track.id %}"><i class="fas fa-download me-2"></i> Download</a></li>
+                    <li>
+                        <a class="dropdown-item offline-toggle" href="#"
+                           data-offline-state="none"
+                           data-track-id="{{ track.id }}"
+                           data-track-name="{{ track.name|escapejs }}"
+                           data-track-artist="{{ track.artist|default_if_none:''|escapejs }}"
+                           data-track-icon="{% if track.icon %}{{ track.icon.url }}{% endif %}"
+                           data-stream-url="{% url 'stream_track' track.id %}"
+                           data-track-type="{{ track.type }}"
+                           data-track-duration="{{ track.duration|default:0 }}">
+                            <i class="fas fa-download me-2"></i> <span class="offline-label">Save for offline</span>
+                        </a>
+                    </li>
+                    <li><a class="dropdown-item" href="{% url 'download_track' track.id %}"><i class="fas fa-file-arrow-down me-2"></i> Download file</a></li>
                     <li><a class="dropdown-item" href="{% url 'edit_track' track.id %}"><i class="fas fa-edit me-2"></i> Edit</a></li>
                     <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteTrackModal" data-track-id="{{ track.id }}" data-track-name="{{ track.name|escapejs }}"><i class="fas fa-trash me-2"></i> Delete</a></li>
                 </ul>

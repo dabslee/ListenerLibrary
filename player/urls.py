@@ -4,6 +4,9 @@ from . import views
 urlpatterns = [
     path('', views.track_list, name='track_list'),
     path('play_focus/', views.play_focus, name='play_focus'),
+    path('downloads/', views.downloads, name='downloads'),
+    path('sw.js', views.service_worker, name='service_worker'),
+    path('manifest.webmanifest', views.web_manifest, name='web_manifest'),
     path('profile/', views.profile, name='profile'),
     path('register/', views.register, name='register'),
     path('upload/', views.upload_track, name='upload_track'),
