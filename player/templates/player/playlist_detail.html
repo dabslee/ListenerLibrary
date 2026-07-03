@@ -9,6 +9,9 @@
         </div>
         <div class="d-flex flex-wrap justify-content-end gap-1">
             <button id="play-all-btn" class="btn btn-success"><i class="fas fa-play me-2"></i>Play All</button>
+            <button id="playlist-offline-btn" class="btn btn-outline-secondary" data-offline-state="none" style="display: none;">
+                <i class="fas fa-download me-2"></i><span class="offline-label">Save for offline</span>
+            </button>
             {% if is_owner %}
             <a href="{% url 'edit_playlist' playlist.id %}" class="btn btn-primary"><i class="fas fa-pen me-2"></i>Edit Playlist Details</a>
             {% endif %}
@@ -75,7 +78,8 @@
 
 {% block extra_js %}
 <script>
-let playlistData = [
+// `var` (not let/const) so this is exposed as window.playlistData for offline.js.
+var playlistData = [
     {% for item in playlist_items %}
     {
         id: {{ item.track.id }},

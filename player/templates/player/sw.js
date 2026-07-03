@@ -13,9 +13,13 @@
  */
 importScripts('{% static "js/offline-db.js" %}');
 
-const VERSION = 'v1';
+// Bump VERSION whenever any precached shell asset changes so installed
+// clients re-fetch them on the next visit.
+const VERSION = 'v2';
 const SHELL_CACHE = 'll-shell-' + VERSION;
-const MEDIA_CACHE = 'll-media-' + VERSION;
+// Unversioned so cached artwork survives shell upgrades. Must match
+// MEDIA_CACHE_NAME in offline.js.
+const MEDIA_CACHE = 'll-media';
 
 // Same-origin assets required for the app to boot offline.
 const SHELL_ASSETS = [

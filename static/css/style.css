@@ -123,3 +123,41 @@ button:disabled {
     font-size: 12px;
     line-height: 1.42857;
 }
+/* --- Offline download indicators --- */
+.track-icon-holder {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.offline-progress-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 5px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.offline-saved-badge {
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bs-success, #198754);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    z-index: 2;
+    border: 2px solid var(--bs-body-bg, #fff);
+    pointer-events: none;
+}
