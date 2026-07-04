@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     const originalPosition = trackInPlaylist.position;
                                     trackInPlaylist.position = result.start_time;
                                     const index = playlistData.indexOf(trackInPlaylist);
-                                    window.playPlaylist({{ playlist.id }}, "{{ playlist.name|escapejs }}", playlistData, index);
+                                    window.playPlaylist({{ playlist.id }}, "{{ playlist.name|escapejs }}", playlistData, index, true); // exact seek
                                     // Restore position if needed (though it will be updated by playback soon)
                                 } else {
                                     // Fallback to playTrack if for some reason not in playlistData (shouldn't happen here)
@@ -226,7 +226,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                         result.track_id,
                                         result.track_type,
                                         result.start_time,
-                                        result.track_duration
+                                        result.track_duration,
+                                        true // exact seek — don't apply local resume position
                                     );
                                 }
                                 transcriptResultsDropdown.style.display = 'none';

@@ -66,6 +66,14 @@ class UserPlaybackState(models.Model):
     last_played_position = models.FloatField(default=0)
     shuffle = models.BooleanField(default=False)
     playlist = models.ForeignKey('Playlist', on_delete=models.SET_NULL, null=True, blank=True)
+    # When this state was recorded on the listening device (not when the row
+    # was written). Used to resolve conflicts when a device syncs progress it
+    # captured while offline: the more recent state wins.
+    recorded_at = models.DateTimeField(default=timezone.now)
+
+    @property
+    def recorded_at_ms(self):
+        return int(self.recorded_at.timestamp() * 1000) if self.recorded_at else 0
 
     def __str__(self):
         return f"{self.user.username}'s Playback State"
@@ -75,6 +83,8 @@ class PodcastProgress(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     track = models.ForeignKey(Track, on_delete=models.CASCADE)
     position = models.FloatField()
+    # See UserPlaybackState.recorded_at.
+    recorded_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         unique_together = ('user', 'track')

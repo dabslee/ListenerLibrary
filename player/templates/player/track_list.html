@@ -165,7 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     result.track_id,
                                     result.track_type,
                                     result.start_time,
-                                    result.track_duration
+                                    result.track_duration,
+                                    true // exact seek — don't apply local resume position
                                 );
                                 transcriptResultsDropdown.style.display = 'none';
                             });

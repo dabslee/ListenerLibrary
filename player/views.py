@@ -2,6 +2,7 @@ import os
 import re
 import mimetypes
 import logging
+from datetime import datetime, timezone as dt_timezone
 from django.core.paginator import Paginator
 from django.core.files.base import ContentFile
 from django.shortcuts import render, redirect, get_object_or_404
@@ -779,9 +780,28 @@ def update_playback_state(request):
         position = data.get('position')
         playlist_id = data.get('playlist_id')
         shuffle = data.get('shuffle', False)
+        # Optional client-side capture time (epoch ms). Sent by devices syncing
+        # progress recorded while offline; conflicts resolve newest-wins so a
+        # stale replay never overwrites fresher state written by another device.
+        recorded_at_ms = data.get('recorded_at')
+        # When replaying queued per-podcast progress, only touch PodcastProgress
+        # (and last-played), not the user's single "current track" state.
+        podcast_only = bool(data.get('podcast_only'))
 
         if track_id is None or position is None:
             return JsonResponse({'status': 'error', 'message': 'Missing track_id or position'}, status=400)
+
+        now = timezone.now()
+        if recorded_at_ms is not None:
+            try:
+                recorded_dt = datetime.fromtimestamp(float(recorded_at_ms) / 1000.0, tz=dt_timezone.utc)
+            except (TypeError, ValueError, OverflowError, OSError):
+                recorded_dt = now
+            # A device with a fast clock must not lock out future updates.
+            if recorded_dt > now:
+                recorded_dt = now
+        else:
+            recorded_dt = now
 
         track = get_object_or_404(
             Track.objects.filter(
@@ -794,33 +814,48 @@ def update_playback_state(request):
         if playlist_id:
             playlist = get_object_or_404(_accessible_playlists(request.user), pk=playlist_id)
 
-        # Update general playback state
-        UserPlaybackState.objects.update_or_create(
-            user=request.user,
-            defaults={
-                'track': track,
-                'last_played_position': position,
-                'playlist': playlist,
-                'shuffle': shuffle,
-            }
-        )
+        applied_state = False
+        if not podcast_only:
+            existing = UserPlaybackState.objects.filter(user=request.user).first()
+            if existing is None or recorded_dt >= existing.recorded_at:
+                UserPlaybackState.objects.update_or_create(
+                    user=request.user,
+                    defaults={
+                        'track': track,
+                        'last_played_position': position,
+                        'playlist': playlist,
+                        'shuffle': shuffle,
+                        'recorded_at': recorded_dt,
+                    }
+                )
+                applied_state = True
 
-        # Update last played timestamp
-        UserTrackLastPlayed.objects.update_or_create(
+        # Last-played timestamp only ever moves forward.
+        last_played, created = UserTrackLastPlayed.objects.get_or_create(
             user=request.user,
             track=track,
-            defaults={'last_played': timezone.now()}
+            defaults={'last_played': recorded_dt}
         )
+        if not created and recorded_dt > last_played.last_played:
+            last_played.last_played = recorded_dt
+            last_played.save(update_fields=['last_played'])
 
-        # Update podcast-specific progress
+        applied_podcast = False
         if track.type == 'podcast':
-            PodcastProgress.objects.update_or_create(
-                user=request.user,
-                track=track,
-                defaults={'position': position}
-            )
+            existing_progress = PodcastProgress.objects.filter(user=request.user, track=track).first()
+            if existing_progress is None or recorded_dt >= existing_progress.recorded_at:
+                PodcastProgress.objects.update_or_create(
+                    user=request.user,
+                    track=track,
+                    defaults={'position': position, 'recorded_at': recorded_dt}
+                )
+                applied_podcast = True
 
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({
+            'status': 'success',
+            'applied_state': applied_state,
+            'applied_podcast': applied_podcast,
+        })
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
     except Exception as e:
@@ -875,6 +910,7 @@ def play_bookmark(request, bookmark_id):
             'last_played_position': bookmark.position,
             'playlist': bookmark.playlist,
             'shuffle': bookmark.shuffle,
+            'recorded_at': timezone.now(),
         }
     )
 

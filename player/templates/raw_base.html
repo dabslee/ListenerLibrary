@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ListenerLibrary</title>
+    {% if user.is_authenticated %}<meta name="ll-user-id" content="{{ user.id }}">{% endif %}
     <link rel="icon" href="{% static 'images/logo.png' %}" type="image/svg+xml">
     <link rel="manifest" href="{% url 'web_manifest' %}">
     <meta name="theme-color" content="#212529">
@@ -187,6 +188,7 @@
         "position": {{ playback_state.last_played_position }},
         "duration": {{ playback_state.track.duration|default:0 }},
         "trackType": "{{ playback_state.track.type }}",
+        "recordedAt": {{ playback_state.recorded_at_ms|default:0 }},
         "playlist": {% if playback_state.playlist %}{
             "id": {{ playback_state.playlist.id }},
             "name": "{{ playback_state.playlist.name|escapejs }}"
@@ -196,9 +198,9 @@
     {% endif %}
     </script>
 
+    <script src="{% static 'js/offline-db.js' %}"></script>
     <script src="{% static 'js/player.js' %}"></script>
     <script src="{% static 'js/toasts.js' %}"></script>
-    <script src="{% static 'js/offline-db.js' %}"></script>
     <script src="{% static 'js/offline.js' %}"></script>
     <script>
         function renderLocalDatetimes() {

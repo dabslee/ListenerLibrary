@@ -67,6 +67,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const csrftoken = getCookie('csrftoken');
 
+    // --- OFFLINE PLAYBACK SYNC ---
+    // Playback state is written locally (IndexedDB, via OfflineDB) on every
+    // save so progress made while offline survives; unsynced records are
+    // replayed to the server when connectivity returns. The server resolves
+    // conflicts newest-wins using the capture timestamps.
+    const syncUserIdMeta = document.querySelector('meta[name="ll-user-id"]');
+    const syncUserId = syncUserIdMeta ? syncUserIdMeta.content : null;
+    const syncDB = self.OfflineDB || null;
+    // Podcast positions captured locally that are fresher than what this page
+    // was rendered with (unsynced offline progress + live playback).
+    let localPodcastOverrides = {};
+
+    function withLocalPodcastPosition(track) {
+        if (track && track.type === 'podcast' && localPodcastOverrides[track.id] != null) {
+            return Object.assign({}, track, { position: localPodcastOverrides[track.id] });
+        }
+        return track;
+    }
+
     function formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) return "0:00";
 
@@ -213,23 +232,132 @@ document.addEventListener('DOMContentLoaded', function() {
         const position = audioPlayer.currentTime;
         if (currentTrack.type === 'podcast') {
             podcastPositions[currentTrack.id] = position;
+            localPodcastOverrides[currentTrack.id] = position;
+        }
+        const recordedAt = Date.now();
+
+        // Local-first: persist on-device so listening progress made while
+        // offline is never lost.
+        let wroteLocal = false;
+        if (syncDB && syncUserId) {
+            try {
+                await syncDB.putSync({
+                    key: 'playbackState',
+                    userId: syncUserId,
+                    recordedAt: recordedAt,
+                    synced: false,
+                    position: position,
+                    shuffle: isShuffle,
+                    playlist: currentPlaylist ? { id: currentPlaylist.id, name: currentPlaylist.name } : null,
+                    track: {
+                        id: currentTrack.id,
+                        name: currentTrack.name,
+                        artist: currentTrack.artist,
+                        icon_url: currentTrack.icon_url,
+                        stream_url: currentTrack.stream_url,
+                        type: currentTrack.type,
+                        duration: currentTrack.duration || 0
+                    }
+                });
+                if (currentTrack.type === 'podcast') {
+                    await syncDB.putSync({
+                        key: 'podcast:' + currentTrack.id,
+                        userId: syncUserId,
+                        trackId: currentTrack.id,
+                        position: position,
+                        recordedAt: recordedAt,
+                        synced: false
+                    });
+                }
+                wroteLocal = true;
+            } catch (e) { /* local persistence is best-effort */ }
         }
 
         try {
-            await fetch('/api/update_playback_state/', {
+            const response = await fetch('/api/update_playback_state/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
                 body: JSON.stringify({
                     track_id: currentTrack.id,
                     position: position,
                     playlist_id: currentPlaylist ? currentPlaylist.id : null,
-                    shuffle: isShuffle
+                    shuffle: isShuffle,
+                    recorded_at: recordedAt
                 })
             });
+            if (response.ok && wroteLocal) {
+                syncDB.markSynced('playbackState', recordedAt);
+                if (currentTrack.type === 'podcast') {
+                    syncDB.markSynced('podcast:' + currentTrack.id, recordedAt);
+                }
+            }
         } catch (error) {
-            console.error('Error saving playback state:', error);
+            // Offline or server unreachable: the unsynced local copy will be
+            // replayed by syncOfflinePlayback() when connectivity returns.
         }
     }
+
+    // Replay playback state captured while offline. The server compares each
+    // record's recorded_at against what it already has and keeps the newer
+    // one, so replaying stale data can never clobber progress made on
+    // another device in the meantime.
+    let playbackSyncInFlight = false;
+    async function syncOfflinePlayback() {
+        if (playbackSyncInFlight || !syncDB || !syncUserId || navigator.onLine === false) return;
+        playbackSyncInFlight = true;
+        try {
+            const entries = (await syncDB.getAllSync()).filter(function (e) {
+                return e.userId === syncUserId && !e.synced;
+            });
+            for (const entry of entries) {
+                const isPodcast = entry.key.indexOf('podcast:') === 0;
+                const body = isPodcast
+                    ? {
+                        track_id: entry.trackId,
+                        position: entry.position,
+                        recorded_at: entry.recordedAt,
+                        podcast_only: true
+                    }
+                    : {
+                        track_id: entry.track ? entry.track.id : null,
+                        position: entry.position,
+                        playlist_id: entry.playlist ? entry.playlist.id : null,
+                        shuffle: entry.shuffle,
+                        recorded_at: entry.recordedAt
+                    };
+                if (body.track_id == null) {
+                    await syncDB.markSynced(entry.key, entry.recordedAt);
+                    continue;
+                }
+                const response = await fetch('/api/update_playback_state/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                    body: JSON.stringify(body)
+                });
+                if (!response.ok) {
+                    // Track deleted / bad record: drop it. Anything else
+                    // (auth, server error) stays queued for a later retry.
+                    if (response.status === 404 || response.status === 400) {
+                        await syncDB.markSynced(entry.key, entry.recordedAt);
+                    }
+                    continue;
+                }
+                const data = await response.json();
+                await syncDB.markSynced(entry.key, entry.recordedAt);
+                if (isPodcast && data.applied_podcast === false) {
+                    // The cloud had fresher progress for this podcast; stop
+                    // preferring our stale local position.
+                    delete localPodcastOverrides[entry.trackId];
+                }
+            }
+        } catch (e) {
+            // Still offline or transient failure — retried on the next
+            // 'online' event or page load.
+        } finally {
+            playbackSyncInFlight = false;
+        }
+    }
+    window.addEventListener('online', syncOfflinePlayback);
 
     // --- UI UPDATE ---
     function updatePlaylistUI() {
@@ -363,19 +491,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function playNextTrack() {
         if (playQueue.length === 0 || currentTrackIndex >= playQueue.length - 1) return;
         currentTrackIndex++;
-        loadAndPlayTrack(playQueue[currentTrackIndex]);
+        loadAndPlayTrack(withLocalPodcastPosition(playQueue[currentTrackIndex]));
         updateNextPrevButtons();
     }
 
     function playPrevTrack() {
         if (playQueue.length === 0 || currentTrackIndex <= 0) return;
         currentTrackIndex--;
-        loadAndPlayTrack(playQueue[currentTrackIndex]);
+        loadAndPlayTrack(withLocalPodcastPosition(playQueue[currentTrackIndex]));
         updateNextPrevButtons();
     }
 
     // --- GLOBAL FUNCTIONS ---
-    window.playTrack = function(trackUrl, trackName, trackArtist, iconUrl, trackId, trackType, position = 0, duration = 0) {
+    // `exactPosition` skips the local podcast-position override — used when the
+    // caller is deliberately seeking (e.g. a transcript search hit), not
+    // resuming from where the listener left off.
+    window.playTrack = function(trackUrl, trackName, trackArtist, iconUrl, trackId, trackType, position = 0, duration = 0, exactPosition = false) {
         currentPlaylist = null;
         playQueue = [];
         originalPlaylist = [];
@@ -384,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
         isShuffle = false;
         updatePlaylistUI();
 
-        const trackObject = {
+        let trackObject = {
             id: trackId,
             name: trackName,
             artist: trackArtist,
@@ -394,10 +525,13 @@ document.addEventListener('DOMContentLoaded', function() {
             position: position,
             duration: duration
         };
+        if (!exactPosition) {
+            trackObject = withLocalPodcastPosition(trackObject);
+        }
         loadAndPlayTrack(trackObject);
     };
 
-    window.playPlaylist = function(playlistId, playlistName, playlistItems, startIndex = 0) {
+    window.playPlaylist = function(playlistId, playlistName, playlistItems, startIndex = 0, exactPosition = false) {
         currentPlaylist = { id: playlistId, name: playlistName };
         originalPlaylist = [...playlistItems];
         shuffledPlaylist = shuffleArray(originalPlaylist);
@@ -407,7 +541,8 @@ document.addEventListener('DOMContentLoaded', function() {
         currentTrackIndex = playQueue.findIndex(t => t.id === startTrack.id);
         if (currentTrackIndex === -1) currentTrackIndex = 0;
 
-        loadAndPlayTrack(playQueue[currentTrackIndex]);
+        const start = playQueue[currentTrackIndex];
+        loadAndPlayTrack(exactPosition ? start : withLocalPodcastPosition(start));
         updatePlaylistUI();
     };
 
@@ -603,14 +738,60 @@ document.addEventListener('DOMContentLoaded', function() {
         const playbackStateEl = document.getElementById('playback-state-data');
         const playbackStateText = playbackStateEl.textContent.trim();
 
-        if (!playbackStateText) {
+        // Cloud state, as rendered into the page by the server.
+        let state = null;
+        if (playbackStateText) {
+            try {
+                state = JSON.parse(playbackStateText);
+            } catch (e) {
+                console.error("Could not parse initial playback state:", e);
+            }
+        }
+
+        // Local state, captured on this device (possibly while offline).
+        // Whichever was recorded more recently wins.
+        let localState = null;
+        if (syncDB && syncUserId) {
+            try {
+                const entries = await syncDB.getAllSync();
+                entries.forEach(function (e) {
+                    if (e.userId !== syncUserId) return;
+                    if (e.key === 'playbackState') {
+                        localState = e;
+                    } else if (e.key.indexOf('podcast:') === 0 && !e.synced) {
+                        localPodcastOverrides[e.trackId] = e.position;
+                        podcastPositions[e.trackId] = e.position;
+                    }
+                });
+            } catch (e) { /* local state is best-effort */ }
+        }
+        const cloudRecordedAt = state ? (state.recordedAt || 0) : 0;
+        if (localState && localState.track && localState.recordedAt > cloudRecordedAt) {
+            state = {
+                trackId: localState.track.id,
+                trackName: localState.track.name,
+                trackArtist: localState.track.artist || 'No artist',
+                trackIcon: localState.track.icon_url,
+                trackStreamUrl: localState.track.stream_url,
+                position: localState.position,
+                duration: localState.track.duration || 0,
+                trackType: localState.track.type,
+                playlist: localState.playlist || null,
+                shuffle: !!localState.shuffle,
+                recordedAt: localState.recordedAt
+            };
+        }
+
+        // Push any progress recorded while offline back to the server.
+        syncOfflinePlayback();
+
+        if (!state) {
             document.title = 'ListenerLibrary';
             updatePlaylistUI();
             return;
         }
 
         try {
-            const state = JSON.parse(playbackStateText);
             currentTrack = {
                 id: state.trackId,
                 name: state.trackName,
@@ -664,7 +845,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
         } catch (e) {
-            console.error("Could not parse initial playback state:", e);
+            console.error("Could not restore playback state:", e);
             document.title = 'ListenerLibrary';
         } finally {
             updatePlaylistUI();

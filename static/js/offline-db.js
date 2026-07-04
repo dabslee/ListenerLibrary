@@ -6,16 +6,20 @@
  * (via importScripts). It attaches an `OfflineDB` object to the global
  * scope (`window` in the page, `self` in the worker).
  *
- * Two object stores are used:
+ * Three object stores are used:
  *   - "tracks": lightweight metadata for each saved track, keyed by track id.
  *   - "audio":  the audio Blob for each saved track, keyed by a normalized
  *               stream-URL path so the service worker can look it up quickly.
+ *   - "sync":   playback state captured locally (possibly while offline),
+ *               pending or already replayed to the server. Keys are
+ *               'playbackState' (the current-track state) and
+ *               'podcast:<trackId>' (per-podcast listening positions).
  */
 (function (global) {
     'use strict';
 
     const DB_NAME = 'listenerlibrary-offline';
-    const DB_VERSION = 1;
+    const DB_VERSION = 2;
 
     function openDB() {
         return new Promise(function (resolve, reject) {
@@ -27,6 +31,9 @@
                 }
                 if (!db.objectStoreNames.contains('audio')) {
                     db.createObjectStore('audio', { keyPath: 'key' });
+                }
+                if (!db.objectStoreNames.contains('sync')) {
+                    db.createObjectStore('sync', { keyPath: 'key' });
                 }
             };
             request.onsuccess = function () { resolve(request.result); };
@@ -96,6 +103,37 @@
         });
     }
 
+    async function putSync(record) {
+        const db = await openDB();
+        const store = db.transaction('sync', 'readwrite').objectStore('sync');
+        return promisifyRequest(store.put(record));
+    }
+
+    async function getSync(key) {
+        const db = await openDB();
+        const store = db.transaction('sync', 'readonly').objectStore('sync');
+        return promisifyRequest(store.get(key));
+    }
+
+    async function getAllSync() {
+        const db = await openDB();
+        const store = db.transaction('sync', 'readonly').objectStore('sync');
+        const result = await promisifyRequest(store.getAll());
+        return result || [];
+    }
+
+    // Flip a sync record to synced:true, but only if it's still the same
+    // capture we replayed (a newer unsynced write must keep its flag).
+    async function markSynced(key, recordedAt) {
+        const record = await getSync(key);
+        if (record && record.recordedAt === recordedAt && !record.synced) {
+            record.synced = true;
+            await putSync(record);
+            return true;
+        }
+        return false;
+    }
+
     global.OfflineDB = {
         openDB: openDB,
         keyFor: keyFor,
@@ -105,5 +143,9 @@
         putAudio: putAudio,
         getAudio: getAudio,
         deleteTrack: deleteTrack,
+        putSync: putSync,
+        getSync: getSync,
+        getAllSync: getAllSync,
+        markSynced: markSynced,
     };
 })(self);
