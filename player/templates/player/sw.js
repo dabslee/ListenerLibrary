@@ -15,7 +15,7 @@ importScripts('{% static "js/offline-db.js" %}');
 
 // Bump VERSION whenever any precached shell asset changes so installed
 // clients re-fetch them on the next visit.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL_CACHE = 'll-shell-' + VERSION;
 // Unversioned so cached artwork survives shell upgrades. Must match
 // MEDIA_CACHE_NAME in offline.js.

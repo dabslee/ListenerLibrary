@@ -703,7 +703,9 @@
     function updateOnlineStatus() {
         const banner = document.getElementById('offline-banner');
         if (!banner) return;
-        banner.style.display = navigator.onLine ? 'none' : 'block';
+        // Toggle via Bootstrap's d-none: the banner's d-flex sets display with
+        // !important, which overrides any inline style we could assign here.
+        banner.classList.toggle('d-none', navigator.onLine);
     }
 
     // ---- Init ----------------------------------------------------------------
