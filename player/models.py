@@ -104,9 +104,16 @@ class Playlist(models.Model):
     )
     image = models.ImageField(upload_to='playlist_images/', null=True, blank=True)
     tracks = models.ManyToManyField(Track, through='PlaylistItem', related_name='playlists')
+    # Bumped on save and by touch() when the track list changes.
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
+    def touch(self):
+        """Mark the playlist modified without re-saving every field."""
+        self.updated_at = timezone.now()
+        Playlist.objects.filter(pk=self.pk).update(updated_at=self.updated_at)
 
     def is_accessible_by(self, user):
         """The owner and any accessor may view/play the playlist."""

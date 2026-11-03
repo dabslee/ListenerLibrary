@@ -706,6 +706,7 @@ def reorder_playlist(request, playlist_id):
     track_ids = request.POST.getlist('track_ids[]')
     for index, track_id in enumerate(track_ids):
         PlaylistItem.objects.filter(playlist=playlist, track_id=track_id).update(order=index)
+    playlist.touch()
     return JsonResponse({'status': 'success'})
 
 @login_required
@@ -728,6 +729,7 @@ def add_track_to_playlist(request):
         PlaylistItem.objects.create(playlist=playlist, track=track, order=max_order + 1)
         action = 'added'
         message = f'Added {track.name} to {playlist.name}.'
+    playlist.touch()
 
     return JsonResponse({'status': 'success', 'action': action, 'message': message})
 
@@ -739,6 +741,7 @@ def remove_track_from_playlist(request, playlist_id, track_id):
 
     item = get_object_or_404(PlaylistItem, playlist=playlist, track=track)
     item.delete()
+    playlist.touch()
 
     return JsonResponse({'status': 'success', 'message': 'Track removed from playlist.'})
 

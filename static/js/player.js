@@ -409,8 +409,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 ] : []
             });
 
-            navigator.mediaSession.setActionHandler('play', () => audioPlayer.play());
-            navigator.mediaSession.setActionHandler('pause', () => audioPlayer.pause());
+            // Leave play/pause to the browser's built-in handling. iOS freezes a
+            // backgrounded page's JS shortly after audio pauses, so a JS 'play'
+            // handler may not run until the page is reopened; the default
+            // action drives the <audio> element directly.
+            navigator.mediaSession.setActionHandler('play', null);
+            navigator.mediaSession.setActionHandler('pause', null);
             navigator.mediaSession.setActionHandler('seekbackward', (details) => {
                 const skipTime = details.seekOffset || 15;
                 audioPlayer.currentTime = Math.max(audioPlayer.currentTime - skipTime, 0);

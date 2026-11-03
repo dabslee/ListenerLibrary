@@ -96,6 +96,56 @@
         </div>
     </div>
 </div>
+<!-- Track Menu Modal: each track's menu content is moved in here while open -->
+<div class="modal fade" id="trackMenuModal" tabindex="-1" aria-labelledby="trackMenuModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-truncate" id="trackMenuModalLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="track-menu-modal-body"></div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const trackMenuModal = document.getElementById('trackMenuModal');
+    const trackMenuBody = document.getElementById('track-menu-modal-body');
+    const trackMenuTitle = document.getElementById('trackMenuModalLabel');
+    let openMenu = null;      // the .track-menu-content currently shown
+    let openMenuHome = null;  // where it lives in the track list
+
+    trackMenuModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const menu = document.getElementById(`track-menu-${button.dataset.trackId}`);
+        if (!menu) return;
+        trackMenuTitle.textContent = button.dataset.trackName;
+        openMenu = menu;
+        openMenuHome = menu.parentNode;
+        trackMenuBody.appendChild(menu);
+        menu.classList.remove('d-none');
+        // Track lists re-rendered via AJAX haven't been sorted yet.
+        PlaylistSort.apply(menu);
+    });
+
+    trackMenuModal.addEventListener('hidden.bs.modal', function () {
+        if (!openMenu) return;
+        openMenu.classList.add('d-none');
+        openMenuHome.appendChild(openMenu);
+        openMenu = null;
+        openMenuHome = null;
+    });
+
+    // Real links (e.g. "Download file") don't leave the page, so close the
+    // modal ourselves. data-bs-dismiss would block the navigation.
+    trackMenuBody.addEventListener('click', function (event) {
+        if (event.target.closest('.track-menu-link')) {
+            bootstrap.Modal.getInstance(trackMenuModal).hide();
+        }
+    });
+});
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const titleSearchInput = document.getElementById('title-search-input');

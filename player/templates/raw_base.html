@@ -4,7 +4,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        // iOS Safari ignores user-scalable=no, so block pinch-zoom directly.
+        // (Double-tap zoom is disabled via touch-action in style.css.)
+        document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+        document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+        document.addEventListener('touchmove', function (e) {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+    </script>
     <title>ListenerLibrary</title>
     {% if user.is_authenticated %}<meta name="ll-user-id" content="{{ user.id }}">{% endif %}
     <link rel="icon" href="{% static 'images/logo.png' %}" type="image/svg+xml">
@@ -202,6 +211,7 @@
     <script src="{% static 'js/player.js' %}"></script>
     <script src="{% static 'js/toasts.js' %}"></script>
     <script src="{% static 'js/offline.js' %}"></script>
+    <script src="{% static 'js/playlist-sort.js' %}"></script>
     <script>
         function renderLocalDatetimes() {
             const elements = document.querySelectorAll('[data-local-datetime]');
